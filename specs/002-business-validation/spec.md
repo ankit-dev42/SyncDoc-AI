@@ -2,7 +2,7 @@
 
 **Feature Branch**: `002-business-validation`
 **Created**: 2026-04-14
-**Status**: Draft
+**Status**: Specified
 **Input**: Validation prompts and deployment checklist from SyncDoc_AI_Test_Execution.md
 
 ## User Scenarios & Testing
@@ -83,6 +83,14 @@
 2. Secrets such as `STRIPE_API_KEY`, `GITHUB_CLIENT_ID`, and `OPENAI_API_KEY` must not be hardcoded.
 3. Database migration coverage must verify the `user_subscriptions` schema and upgrade path.
 
+## Key Entities *(include if feature involves data)*
+
+- **UserSubscription**: Tracks subscription tier and entitlement. Attributes: `user_id`, `subscription_tier` (free/pro/enterprise), `stripe_customer_id`, `status` (active/canceled/expired), `created_at`, `renewed_at`
+- **Project**: User-owned project (documentation scope). Attributes: `project_id`, `owner_id`, `name`, `created_at`, `access_control` (private/shared)
+- **WebhookEvent**: Log of received webhook deliveries. Attributes: `event_id`, `source` (github), `payload_hash`, `status` (accepted/rejected), `reason`, `dispatched_at`
+- **GithubEventPayload**: Internal Spring Event DTO published after webhook validation. Attributes: `event_id`, `event_type`, `repository_id`, `delivery_id`, `payload_hash`, `occurred_at`, `schema_version`
+- **GeneratedDocumentation**: Extracted AI output. Attributes: `doc_id`, `user_id`, `source_content`, `key_changes` (text), `action_items` (text), `created_at`, `quality_score`
+
 ## Requirements
 
 ### Functional Requirements
@@ -100,12 +108,51 @@
 - **FR-011**: System MUST remain compatible with Java 17 in production code.
 - **FR-012**: System MUST prevent hardcoded secrets from entering tracked source files.
 - **FR-013**: System MUST verify migrations for `user_subscriptions` schema integrity.
+- **FR-014**: System MUST validate internal `GithubEventPayload` messages against a versioned JSON schema before dispatching to downstream processors.
 
-## Success Criteria
+## Success Criteria *(mandatory)*
 
-- **SC-001**: Subscription authorization tests cover paid, free-tier-limit, and inactive-subscription outcomes.
-- **SC-002**: Cross-project documentation access tests prove owner success and unauthorized `403` denial.
-- **SC-003**: Webhook integration tests prove valid HMAC acceptance, invalid HMAC rejection, and event-bus dispatch.
-- **SC-004**: A browser-based payment success-path test executes end-to-end in CI or a documented local harness.
-- **SC-005**: AI processing tests prove correct extraction and persistence of `Key Changes` and `Action Items`.
-- **SC-006**: Deployment-readiness checks verify Java 17 compatibility, secret hygiene, and subscription migration integrity.
+### Measurable Outcomes
+
+- **SC-001**: Subscription entitlement checks return allow/deny with 100% accuracy across paid, free-tier-limit (>1 repo), and inactive subscription scenarios
+- **SC-002**: Project access isolation returns `200 OK` for owner requests and `403 Forbidden` for non-owner requests; zero cross-project leaks in 1000+ request audit
+- **SC-003**: Webhook verification accepts valid HMAC signatures and rejects 100% of forged payloads; accepted webhooks dispatch to event bus within ≤100ms
+- **SC-004**: Payment success-path E2E test executes end-to-end (dashboard → checkout → redirect → success banner) with deterministic test-card in <30s wall-clock
+- **SC-005**: AI documentation parser extracts `Key Changes` and `Action Items` sections with ≥95% accuracy on sample OpenAI responses; parsing errors are logged and tracked
+- **SC-006**: Java 17 compatibility verified by bytecode inspection; secret-hygiene scan detects hardcoded keys; migration schema verified for `user_subscriptions` integrity
+
+## Constitution Alignment *(mandatory)*
+
+### Code Quality (Principle I)
+- [ ] Authorization logic (subscription, project access, webhook verification) extracted into Named service classes with clear single responsibility
+- [ ] No handler method exceeds 40 lines; complex validation rules use dedicated policy classes
+- [ ] Deployment-readiness checks (Java 17 compatibility, secret hygiene) automated as test utilities
+
+### Testing Standards (Principle II)
+- [ ] Test cases written first for all 5 user stories (subscription, access, webhook, payment, AI extraction)
+- [ ] Unit tests: ≥90% coverage for authorization gates (subscription, project access)
+- [ ] Integration tests: MockMvc tests for project controller, webhook controller signature verification
+- [ ] E2E tests: Browser test for payment success-path using test-mode Stripe
+- [ ] Contract tests: Webhook signature format, event-bus message schema
+- [ ] Deployment checks: Java 17 bytecode inspection, secret-hygiene regex scan, migration schema validation
+
+### User Experience Consistency (Principle III)
+- [ ] Error states defined: "Sync blocked due to free-tier limit", "Access denied: you don't own this project", "Invalid payment information"
+- [ ] Notification: Success banner after payment with clear next-step guidance
+- [ ] i18n: All error messages and status labels externalized
+
+### Performance Requirements (Principle IV)
+- [ ] Subscription check: ≤50ms (cache Stripe status with 5-min TTL)
+- [ ] Project access check: ≤20ms (local authorization, no database query for owner check)
+- [ ] Webhook dispatch: ≤100ms from receipt to event-bus publish
+- [ ] Payment redirect: ≤2s from checkout return to dashboard success render
+
+## Assumptions
+
+- **Stripe integration**: A Stripe test-mode account exists; keys are injected via environment variables at deployment
+- **OpenAI integration**: API key is injected via environment; responses are mocked in tests with sample Markdown payloads
+- **Event bus**: MVP uses Spring Application Events with `@Async` dispatch; dispatcher contracts remain Redis-compatible for future rollout
+- **Authentication**: User authentication and session handling are inherited from SyncDoc AI auth layer; no new auth requirements
+- **Browser test harness**: Playwright 1.40+ is available; test-card payment data is configured in CI environment
+- **Project ownership**: "Ownership" is modeled as the `user_id` matching the `owner_id` field in the Project entity; no role-based access control (RBAC) required for MVP
+- **Webhook signature algorithm**: GitHub uses HMAC-SHA256 with a pre-shared secret; verification is straightforward digest comparison

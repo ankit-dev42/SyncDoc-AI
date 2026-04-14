@@ -36,3 +36,16 @@ logging:
 security:
   workspace-membership:
     enforce-redis-membership: false
+
+integrations:
+  stripe:
+    secret-key: ${STRIPE_API_KEY:}
+    publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+  github:
+    client-id: ${GITHUB_CLIENT_ID:}
+    client-secret: ${GITHUB_CLIENT_SECRET:}
+    webhook-secret: ${GITHUB_WEBHOOK_SECRET:}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-4o-mini}

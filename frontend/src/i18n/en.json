@@ -28,7 +28,7 @@
   },
   "search": {
     "placeholder": "Search messages…",
-    "noResults": "No results found for "{{query}}"",
+    "noResults": "No results found for \"{{query}}\"",
     "filterFrom": "From: {{user}}",
     "filterChannel": "In: {{channel}}"
   },
@@ -52,6 +52,16 @@
     "networkError": "Connection lost. Trying to reconnect…",
     "authError": "Your session has expired. Please log in again.",
     "rateLimited": "Too many requests. Please wait a moment and try again.",
-    "forbidden": "You don't have permission to do that."
+    "forbidden": "You don't have permission to do that.",
+    "projectAccessDenied": "Access denied: you don't own this project.",
+    "syncBlockedFreeTier": "Sync blocked due to free-tier limit. Upgrade to continue.",
+    "invalidPaymentInformation": "Invalid payment information. Please verify your card details and try again."
+  },
+  "billing": {
+    "upgradeToPro": "Upgrade to Pro",
+    "upgradeSuccess": "Upgrade complete! You now have Pro access.",
+    "upgradeRedirecting": "Redirecting to secure checkout…",
+    "paymentSuccessTitle": "Payment successful",
+    "paymentSuccessBody": "Your subscription has been updated successfully."
   }
 }

@@ -11,10 +11,25 @@ Add a test-first validation workstream covering subscription-gated sync authoriz
 
 **Language/Version**: Java 17 for backend, TypeScript 5 for frontend
 **Backend Stack**: Spring Boot 3, Spring Test, MockMvc, Mockito, Flyway
-**Frontend Stack**: React 18, Vite 5, Vitest; browser E2E harness must be added as part of this feature
+**Frontend Stack**: React 18, Vite 5, Vitest, Playwright 1.40+; browser E2E harness must be added as part of this feature
 **Project Type**: Full-stack web application with backend validation services and frontend payment flow
 **Primary Goal**: Convert business-validation prompts into executable tests and the minimum supporting production code
 **Constraints**: Preserve Java 17 compatibility, avoid hardcoded secrets, keep test harnesses deterministic, prefer small domain modules over speculative architecture
+
+## Architecture Decisions
+
+1. **Event Bus for MVP**: Use Spring Application Events with `@Async` dispatch for webhook processing in the MVP.
+2. **Future Redis Compatibility**: Keep dispatcher contracts narrow so the MVP event publisher can be swapped for Redis-backed dispatch later without changing controller behavior.
+3. **Backend Package Root**: Implement new business-validation modules under `com.syncdoc.collaboration` so Spring Boot component scanning and JPA entity discovery work with the current application root.
+4. **E2E Runner**: Standardize browser automation on Playwright 1.40+.
+
+## Dependencies & Assumptions
+
+1. Stripe test-mode credentials are injected via environment variables.
+2. OpenAI integration remains mocked in automated tests.
+3. Webhook processing uses Spring Events plus `@Async` in MVP, with Redis-compatible seams retained for later rollout.
+4. Existing authentication/session infrastructure is reused.
+5. Browser E2E execution depends on Playwright 1.40+ and CI-provided sandbox credentials.
 
 ## Implementation Notes
 
@@ -22,29 +37,35 @@ Add a test-first validation workstream covering subscription-gated sync authoriz
 2. Prefer introducing narrow domain modules with stable seams rather than overloading collaboration-specific packages.
 3. Keep tests deterministic by mocking Stripe/OpenAI/external webhook dependencies.
 4. Use a dedicated browser E2E runner only for the payment flow; keep all other checks in fast backend tests.
+5. Define `GithubEventPayload` as the canonical internal webhook event contract and enforce schema validation before async dispatch.
 
 ## Proposed Source Areas
 
 ```text
 backend/
-├── src/main/java/com/syncdoc/
+├── src/main/java/com/syncdoc/collaboration/
 │   ├── subscription/
 │   │   ├── client/
+│   │   ├── model/
 │   │   └── service/
 │   ├── project/
 │   │   ├── controller/
+│   │   ├── model/
 │   │   └── security/
 │   ├── webhook/
 │   │   ├── controller/
+│   │   ├── dto/
+│   │   ├── model/
 │   │   ├── security/
 │   │   └── service/
 │   ├── ai/
+│   │   ├── model/
 │   │   ├── service/
 │   │   └── parser/
 │   └── quality/
 │       ├── security/
 │       └── runtime/
-└── src/test/java/com/syncdoc/
+└── src/test/java/com/syncdoc/collaboration/
     ├── subscription/
     ├── project/
     ├── webhook/
@@ -63,3 +84,4 @@ frontend/
 1. Tests are authored first for each user story.
 2. No story is marked complete until the target scenario is reproducible in an automated test.
 3. Deployment-readiness checks are automated where practical and documented where environmental dependencies are unavoidable.
+4. Security and performance are hard-gated: no release if multi-tenant leak audit (1000 requests), payment E2E duration (<30s), webhook dispatch latency (<=100ms), or AI extraction accuracy (>=95%) fails.
