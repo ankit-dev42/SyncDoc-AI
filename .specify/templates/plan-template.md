@@ -31,7 +31,14 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**For this feature, verify compliance with:**
+
+- ✅ **Principle I (Code Quality)**: Is the module structure clearly organized? Can a new engineer understand the feature in 10 minutes?
+- ✅ **Principle II (Testing Standards)**: Are test cases outlined and approved before implementation? Integration tests planned for external APIs?
+- ✅ **Principle III (UX Consistency)**: Are user flows documented? Design system applied? i18n requirements identified?
+- ✅ **Principle IV (Performance)**: Are latency/bundle size targets defined? Database query complexity understood?
+
+**If any check fails**: Document violation in Complexity Tracking section with justification.
 
 ## Project Structure
 

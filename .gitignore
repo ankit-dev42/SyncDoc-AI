@@ -1,0 +1,33 @@
+# Java
+target/
+*.class
+*.jar
+.gradle/
+build/
+
+# Node.js/TypeScript
+node_modules/
+dist/
+build/
+*.log
+.env*
+
+# PostgreSQL/MySQL
+# No specific patterns, but perhaps logs if any
+
+# Redis
+# No specific
+
+# Elasticsearch
+# No specific
+
+# Docker
+# Covered below
+
+# Universal
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

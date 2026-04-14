@@ -114,6 +114,36 @@
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
 
+## Constitution Alignment *(mandatory)*
+
+<!--
+  ACTION REQUIRED: Verify this feature complies with SyncDoc AI Constitution.
+  Reference the four core principles in .specify/memory/constitution.md
+-->
+
+### Code Quality (Principle I)
+- [ ] Module structure is clearly organized per stack conventions
+- [ ] No single function/class exceeds 40/300 lines; extract if needed
+- [ ] Complex logic documented; method names self-explanatory
+
+### Testing Standards (Principle II)
+- [ ] Test cases outlined before implementation
+- [ ] Unit test coverage target: [70-100%]
+- [ ] Integration tests planned for: [external APIs, database, async operations]
+- [ ] TDD approach documented: tests fail → implement → refactor
+
+### User Experience Consistency (Principle III)
+- [ ] Design system applied; no custom CSS needed
+- [ ] Loading states, error messages, success confirmations all included
+- [ ] i18n strings managed; no hardcoded UI text
+- [ ] Keyboard navigation and WCAG 2.1 AA compliance planned
+
+### Performance Requirements (Principle IV)
+- [ ] API latency target: [≤200ms p95]
+- [ ] Frontend bundle size target: [≤150KB gzipped]
+- [ ] Database queries expected to run in: [≤100ms]
+- [ ] Performance metrics: [list any specific targets for this feature]
+
 ## Assumptions
 
 <!--
