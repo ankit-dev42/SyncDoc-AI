@@ -1,15 +1,20 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import './App.css';
-import { Thread } from './features/messaging/components/Thread';
-import { ThreadList } from './features/messaging/components/ThreadList';
-import { useThreads } from './features/messaging/hooks/useThreads';
+import { SkeletonLoader } from './components/SkeletonLoader';
 import { PresenceBadge } from './features/presence/components/PresenceBadge';
 import { usePresence } from './features/presence/hooks/usePresence';
-import { SearchBox } from './features/search/components/SearchBox';
-import { SearchResults } from './features/search/components/SearchResults';
-import { useSearch } from './features/search/hooks/useSearch';
-import { WorkspaceList } from './features/workspace/components/WorkspaceList';
 import { useWorkspaceStore } from './features/workspace/store/workspaceStore';
+
+// Lazy-load heavy feature modules to reduce initial bundle size (T101)
+const WorkspaceList   = lazy(() => import('./features/workspace/components/WorkspaceList').then(m => ({ default: m.WorkspaceList })));
+const SearchBox       = lazy(() => import('./features/search/components/SearchBox').then(m => ({ default: m.SearchBox })));
+const SearchResults   = lazy(() => import('./features/search/components/SearchResults').then(m => ({ default: m.SearchResults })));
+const ThreadList      = lazy(() => import('./features/messaging/components/ThreadList').then(m => ({ default: m.ThreadList })));
+const Thread          = lazy(() => import('./features/messaging/components/Thread').then(m => ({ default: m.Thread })));
+
+// Hooks for non-lazy data stay regular imports
+import { useSearch }   from './features/search/hooks/useSearch';
+import { useThreads }  from './features/messaging/hooks/useThreads';
 
 const DEFAULT_CHANNEL_ID = 'general';
 
@@ -64,13 +69,15 @@ function App() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="space-y-4 lg:col-span-1">
-          <WorkspaceList
-            workspaces={workspaces}
-            activeWorkspaceId={activeWorkspaceId}
-            loading={loading}
-            error={error}
-            onSelectWorkspace={switchWorkspace}
-          />
+          <Suspense fallback={<SkeletonLoader rows={4} label="Loading workspaces…" />}>
+            <WorkspaceList
+              workspaces={workspaces}
+              activeWorkspaceId={activeWorkspaceId}
+              loading={loading}
+              error={error}
+              onSelectWorkspace={switchWorkspace}
+            />
+          </Suspense>
 
           <div className="rounded-md border border-slate-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
@@ -98,27 +105,31 @@ function App() {
         <section className="space-y-4 lg:col-span-2">
           <div className="rounded-md border border-slate-200 bg-white p-3">
             <h2 className="mb-2 text-sm font-semibold text-slate-700">Search</h2>
-            <SearchBox onSearch={(query, filters) => void runSearch(query, filters)} isLoading={searching} />
-            <div className="mt-3">
-              <SearchResults results={results} loading={searching} error={searchError} onSelect={navigateToResult} />
-            </div>
+            <Suspense fallback={<SkeletonLoader rows={1} label="Loading search…" />}>
+              <SearchBox onSearch={(query, filters) => void runSearch(query, filters)} isLoading={searching} />
+              <div className="mt-3">
+                <SearchResults results={results} loading={searching} error={searchError} onSelect={navigateToResult} />
+              </div>
+            </Suspense>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-md border border-slate-200 bg-white p-3">
               <h2 className="mb-2 text-sm font-semibold text-slate-700">Threads</h2>
-              <ThreadList threads={threads} isLoading={loadingThreads} onOpenThread={(id) => void openThread(id)} />
+              <Suspense fallback={<SkeletonLoader rows={3} label="Loading threads…" />}>
+                <ThreadList threads={threads} isLoading={loadingThreads} onOpenThread={(id) => void openThread(id)} />
+              </Suspense>
               {threadError ? <p className="mt-2 text-sm text-red-700">{threadError}</p> : null}
             </div>
 
             <div className="rounded-md border border-slate-200 bg-white p-3">
-              <Thread
+              <Suspense fallback={<SkeletonLoader rows={5} label="Loading thread…" />}>
+                <Thread
                 rootMessageId={activeThreadId ?? 'Select a thread'}
                 replies={activeReplies}
                 isLoading={loadingReplies}
                 error={threadError}
-              />
-            </div>
+              />              </Suspense>            </div>
           </div>
         </section>
       </div>

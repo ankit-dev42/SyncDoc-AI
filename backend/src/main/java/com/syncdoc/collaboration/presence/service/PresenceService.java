@@ -9,15 +9,21 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class PresenceService {
 
     private static final Duration DEFAULT_AWAY_THRESHOLD = Duration.ofMinutes(5);
+    /** Minimum interval between two broadcasts for the same user to reduce Redis churn. */
+    private static final Duration BROADCAST_DEBOUNCE = Duration.ofSeconds(10);
 
     private final PresenceRepository presenceRepository;
     private final MessageService messageService;
     private final RedisWebSocketBroadcaster webSocketBroadcaster;
+    /** Tracks the last broadcast time per "workspaceId:userId" key. */
+    private final Map<String, Instant> lastBroadcast = new ConcurrentHashMap<>();
 
     public PresenceService(
         PresenceRepository presenceRepository,
@@ -30,6 +36,10 @@ public class PresenceService {
     }
 
     public Presence upsertStatus(String workspaceId, String userId, Presence.Status manualStatus) {
+        return upsertStatus(workspaceId, userId, manualStatus, null);
+    }
+
+    public Presence upsertStatus(String workspaceId, String userId, Presence.Status manualStatus, String timezoneId) {
         Instant now = Instant.now();
         Presence presence = presenceRepository.findByWorkspaceAndUser(workspaceId, userId)
             .orElseGet(() -> {
@@ -42,6 +52,9 @@ public class PresenceService {
         presence.setLastSeenAt(now);
         presence.setManualStatus(manualStatus);
         presence.setStatus(deriveStatus(now, manualStatus, now, DEFAULT_AWAY_THRESHOLD));
+        if (timezoneId != null && !timezoneId.isBlank()) {
+            presence.setTimezoneId(timezoneId);
+        }
 
         presenceRepository.upsert(presence);
         broadcast(workspaceId, presence);
@@ -87,6 +100,13 @@ public class PresenceService {
     }
 
     private void broadcast(String workspaceId, Presence presence) {
+        String key = workspaceId + ":" + presence.getUserId();
+        Instant now = Instant.now();
+        Instant last = lastBroadcast.get(key);
+        if (last != null && Duration.between(last, now).compareTo(BROADCAST_DEBOUNCE) < 0) {
+            return; // skip – already broadcast within the debounce window
+        }
+        lastBroadcast.put(key, now);
         webSocketBroadcaster.broadcast("/topic/workspace/" + workspaceId + "/presence", presence);
     }
 }

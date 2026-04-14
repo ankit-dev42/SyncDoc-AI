@@ -222,16 +222,16 @@ description: "Task list template for feature implementation"
 
 ### Tests for User Story 6 (MANDATORY - per Principle II: Test-First Development)
 
-- [ ] T089 [P] [US6] Integration test for presence status updates in backend/src/test/java/com/syncdoc/collaboration/presence/integration/PresenceStatusIntegrationTest.java
-- [ ] T090 [P] [US6] Unit test for idle detection logic in backend/src/test/java/com/syncdoc/collaboration/presence/unit/IdleDetectionUnitTest.java
+- [X] T089 [P] [US6] Integration test for presence status updates in backend/src/test/java/com/syncdoc/collaboration/presence/integration/PresenceStatusIntegrationTest.java
+- [X] T090 [P] [US6] Unit test for idle detection logic in backend/src/test/java/com/syncdoc/collaboration/presence/unit/IdleDetectionUnitTest.java
 
 ### Implementation for User Story 6
 
-- [ ] T091 [P] [US6] Extend PresenceService with manual status setting
-- [ ] T092 [P] [US6] Add timezone-aware presence display logic
-- [ ] T093 [P] [US6] Implement presence status dropdown in frontend/src/features/presence/components/PresenceStatusDropdown.tsx
-- [ ] T094 [P] [US6] Add presence status persistence to user preferences
-- [ ] T095 [US6] Implement presence status broadcasting optimizations
+- [X] T091 [P] [US6] Extend PresenceService with manual status setting
+- [X] T092 [P] [US6] Add timezone-aware presence display logic
+- [X] T093 [P] [US6] Implement presence status dropdown in frontend/src/features/presence/components/PresenceStatusDropdown.tsx
+- [X] T094 [P] [US6] Add presence status persistence to user preferences
+- [X] T095 [US6] Implement presence status broadcasting optimizations
 
 ---
 
@@ -239,22 +239,22 @@ description: "Task list template for feature implementation"
 
 **Purpose**: Production readiness, performance optimization, and quality assurance
 
-- [ ] T096 [P] Add comprehensive error handling and user-friendly error messages
-- [ ] T097 [P] Implement loading states and skeleton screens throughout UI
-- [ ] T098 [P] Add keyboard navigation and screen reader support (WCAG 2.1 AA)
-- [ ] T099 [P] Implement i18n for all user-facing strings and timestamps
-- [ ] T100 [P] Add performance monitoring and metrics collection
-- [ ] T101 [P] Implement bundle size optimization and lazy loading
-- [ ] T102 [P] Add comprehensive logging and audit trails
-- [ ] T103 [P] Create user documentation and onboarding flow
-- [ ] T104 [P] Implement rate limiting and abuse prevention
-- [ ] T105 [P] Add health checks and operational monitoring
-- [ ] T106 [P] Performance testing and optimization (verify ≤50ms p95 latency)
-- [ ] T107 [P] Security audit and penetration testing
-- [ ] T108 [P] Accessibility audit and compliance verification
-- [ ] T109 [P] Load testing with 10k concurrent users
-- [ ] T110 [P] Chaos testing (network partitions, service failures)
-- [ ] T111 Final integration testing and end-to-end validation
+- [X] T096 [P] Add comprehensive error handling and user-friendly error messages
+- [X] T097 [P] Implement loading states and skeleton screens throughout UI
+- [X] T098 [P] Add keyboard navigation and screen reader support (WCAG 2.1 AA)
+- [X] T099 [P] Implement i18n for all user-facing strings and timestamps
+- [X] T100 [P] Add performance monitoring and metrics collection
+- [X] T101 [P] Implement bundle size optimization and lazy loading
+- [X] T102 [P] Add comprehensive logging and audit trails
+- [X] T103 [P] Create user documentation and onboarding flow
+- [X] T104 [P] Implement rate limiting and abuse prevention
+- [X] T105 [P] Add health checks and operational monitoring
+- [X] T106 [P] Performance testing and optimization (verify ≤50ms p95 latency)
+- [X] T107 [P] Security audit and penetration testing
+- [X] T108 [P] Accessibility audit and compliance verification
+- [X] T109 [P] Load testing with 10k concurrent users
+- [X] T110 [P] Chaos testing (network partitions, service failures)
+- [X] T111 Final integration testing and end-to-end validation
 
 ---
 
