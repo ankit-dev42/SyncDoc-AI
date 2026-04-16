@@ -218,6 +218,36 @@ Associated test roots:
 4. `backend/src/test/java/com/syncdoc/collaboration/ai/`
 5. `backend/src/test/java/com/syncdoc/collaboration/quality/`
 
+---
+
+## Feature Traceability Matrix (T050)
+
+| Requirement | Covered By Tasks |
+|---|---|
+| FR-001 Subscription entitlement validation | T011-T018 |
+| FR-002 Free-tier limit enforcement | T012-T018 |
+| FR-003 Authorized project-only access | T019-T023 |
+| FR-004 `403 Forbidden` on cross-project access | T020-T023, T046 |
+| FR-005 GitHub HMAC verification | T024-T027, T045 |
+| FR-006 Dispatch accepted webhook events | T025-T030, T045 |
+| FR-007 Return `202 Accepted` for valid webhooks | T024-T027 |
+| FR-008 Automated payment success-path verification | T031-T035 |
+| FR-009 Extract `Key Changes` and `Action Items` | T036, T039, T048 |
+| FR-010 Persist extracted AI documentation | T037-T041 |
+| FR-011 Java 17 compatibility | T042 |
+| FR-012 Secret hygiene enforcement | T043 |
+| FR-013 `user_subscriptions` migration integrity | T044 |
+| FR-014 Validate internal `GithubEventPayload` schema | T024, T028, T030 |
+
+| Success Criterion | Covered By Tasks |
+|---|---|
+| SC-001 Subscription allow/deny accuracy | T011-T018 |
+| SC-002 Zero cross-project leaks in 1000+ requests | T019-T023, T046 |
+| SC-003 Valid webhooks accepted, forged rejected, dispatch <=100ms | T024-T030, T045 |
+| SC-004 Payment success flow completes in <30s | T031-T035 |
+| SC-005 AI extraction accuracy >=95% | T036-T041, T047-T048 |
+| SC-006 Java 17 + secret hygiene + migration verification | T042-T044 |
+
 Frontend E2E harness paths:
 
 1. `frontend/playwright.config.ts`

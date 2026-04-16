@@ -132,15 +132,15 @@ description: "Executable, dependency-ordered task list for 002-business-validati
 
 ### Tests for User Story 5 (Write and fail first)
 
-- [ ] T036 [P] [US5] Create failing parser unit tests for heading extraction and malformed markdown handling in `backend/src/test/java/com/syncdoc/collaboration/ai/unit/GeneratedDocumentationParserTest.java`
-- [ ] T037 [P] [US5] Create failing service unit tests for single-write persistence and controlled error behavior in `backend/src/test/java/com/syncdoc/collaboration/ai/unit/AIProcessingServiceTest.java`
-- [ ] T038 [P] [US5] Create failing contract tests for `GET /api/v1/ai/extract-status/{docId}` and `GET /api/v1/ai/extract-result/{docId}` in `backend/src/test/java/com/syncdoc/collaboration/ai/contract/AIExtractionContractTest.java`
+- [x] T036 [P] [US5] Create failing parser unit tests for heading extraction and malformed markdown handling in `backend/src/test/java/com/syncdoc/collaboration/ai/unit/GeneratedDocumentationParserTest.java`
+- [x] T037 [P] [US5] Create failing service unit tests for single-write persistence and controlled error behavior in `backend/src/test/java/com/syncdoc/collaboration/ai/unit/AIProcessingServiceTest.java`
+- [x] T038 [P] [US5] Create failing contract tests for `GET /api/v1/ai/extract-status/{docId}` and `GET /api/v1/ai/extract-result/{docId}` in `backend/src/test/java/com/syncdoc/collaboration/ai/contract/AIExtractionContractTest.java`
 
 ### Implementation for User Story 5
 
-- [ ] T039 [US5] Implement markdown section parser in `backend/src/main/java/com/syncdoc/collaboration/ai/parser/GeneratedDocumentationParser.java`
-- [ ] T040 [US5] Implement AI processing orchestration and persistence in `backend/src/main/java/com/syncdoc/collaboration/ai/service/AIProcessingService.java`
-- [ ] T041 [US5] Implement extraction status/result endpoints in `backend/src/main/java/com/syncdoc/collaboration/ai/controller/AIExtractionController.java`
+- [x] T039 [US5] Implement markdown section parser in `backend/src/main/java/com/syncdoc/collaboration/ai/parser/GeneratedDocumentationParser.java`
+- [x] T040 [US5] Implement AI processing orchestration and persistence in `backend/src/main/java/com/syncdoc/collaboration/ai/service/AIProcessingService.java`
+- [x] T041 [US5] Implement extraction status/result endpoints in `backend/src/main/java/com/syncdoc/collaboration/ai/controller/AIExtractionController.java`
 
 **Checkpoint**: US5 is independently deployable and testable.
 
@@ -152,18 +152,18 @@ description: "Executable, dependency-ordered task list for 002-business-validati
 
 ### Blockers (Must Pass for Functional Acceptance)
 
-- [ ] T042 [P] Add Java 17 bytecode compatibility validation test in `backend/src/test/java/com/syncdoc/collaboration/quality/runtime/Java17CompatibilityTest.java`
-- [ ] T043 [P] Add hardcoded-secret scan test for backend/frontend source in `backend/src/test/java/com/syncdoc/collaboration/quality/security/SecretExposureAuditTest.java`
-- [ ] T044 [P] Add migration integrity test for `user_subscriptions` schema and indexes in `backend/src/test/java/com/syncdoc/collaboration/subscription/integration/UserSubscriptionsMigrationIntegrationTest.java`
-- [ ] T045 [P] Add webhook dispatch latency test (<=100ms from receipt to publish) in `backend/src/test/java/com/syncdoc/collaboration/webhook/performance/WebhookDispatchPerformanceTest.java`
-- [ ] T046 [P] Add multi-tenant leak harness `MultiTenantSecurityAuditTest` with 1000 unauthorized cross-project requests and strict assertion of 100% `403` responses in `backend/src/test/java/com/syncdoc/collaboration/project/security/MultiTenantSecurityAuditTest.java`
-- [ ] T047 [P] Add AI extraction accuracy harness fixture corpus (20 pairs of `sample_git_diff.txt` and `expected_summary.md`) under `backend/src/test/resources/fixtures/ai-accuracy/`
-- [ ] T048 [P] Add AI extraction scoring test that computes average similarity against fixture corpus and fails when score < 0.95 in `backend/src/test/java/com/syncdoc/collaboration/ai/performance/AIExtractionAccuracyGateTest.java`
+- [x] T042 [P] Add Java 17 bytecode compatibility validation test in `backend/src/test/java/com/syncdoc/collaboration/quality/runtime/Java17CompatibilityTest.java`
+- [x] T043 [P] Add hardcoded-secret scan test for backend/frontend source in `backend/src/test/java/com/syncdoc/collaboration/quality/security/SecretExposureAuditTest.java`
+- [x] T044 [P] Add migration integrity test for `user_subscriptions` schema and indexes in `backend/src/test/java/com/syncdoc/collaboration/subscription/integration/UserSubscriptionsMigrationIntegrationTest.java`
+- [x] T045 [P] Add webhook dispatch latency test (<=100ms from receipt to publish) in `backend/src/test/java/com/syncdoc/collaboration/webhook/performance/WebhookDispatchPerformanceTest.java`
+- [x] T046 [P] Add multi-tenant leak harness `MultiTenantSecurityAuditTest` with 1000 unauthorized cross-project requests and strict assertion of 100% `403` responses in `backend/src/test/java/com/syncdoc/collaboration/project/security/MultiTenantSecurityAuditTest.java`
+- [x] T047 [P] Add AI extraction accuracy harness fixture corpus (20 pairs of `sample_git_diff.txt` and `expected_summary.md`) under `backend/src/test/resources/fixtures/ai-accuracy/`
+- [x] T048 [P] Add AI extraction scoring test that computes average similarity against fixture corpus and fails when score < 0.95 in `backend/src/test/java/com/syncdoc/collaboration/ai/performance/AIExtractionAccuracyGateTest.java`
 
 ### Non-Blockers (Post-Acceptance Documentation)
 
-- [ ] T049 Update execution commands and validation evidence in `specs/002-business-validation/quickstart.md`
-- [ ] T050 Update feature traceability matrix (FR/SC to tasks) in `specs/002-business-validation/research.md`
+- [x] T049 Update execution commands and validation evidence in `specs/002-business-validation/quickstart.md`
+- [x] T050 Update feature traceability matrix (FR/SC to tasks) in `specs/002-business-validation/research.md`
 
 ---
 

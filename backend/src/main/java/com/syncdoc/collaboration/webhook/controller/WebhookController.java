@@ -1,6 +1,7 @@
 package com.syncdoc.collaboration.webhook.controller;
 
 import com.syncdoc.collaboration.common.dto.ApiResponse;
+import com.syncdoc.collaboration.config.BusinessValidationProperties;
 import com.syncdoc.collaboration.exception.BusinessValidationException;
 import com.syncdoc.collaboration.webhook.security.GitHubWebhookSignatureVerifier;
 import com.syncdoc.collaboration.webhook.service.WebhookAuditService;
@@ -19,20 +20,21 @@ import java.security.MessageDigest;
 @RequestMapping("/api/v1/webhooks")
 public class WebhookController {
 
-    private static final String WEBHOOK_SECRET = "test-webhook-secret";
-
     private final GitHubWebhookSignatureVerifier signatureVerifier;
     private final WebhookEventDispatcher webhookEventDispatcher;
     private final WebhookAuditService webhookAuditService;
+    private final BusinessValidationProperties businessValidationProperties;
 
     public WebhookController(
         GitHubWebhookSignatureVerifier signatureVerifier,
         WebhookEventDispatcher webhookEventDispatcher,
-        WebhookAuditService webhookAuditService
+        WebhookAuditService webhookAuditService,
+        BusinessValidationProperties businessValidationProperties
     ) {
         this.signatureVerifier = signatureVerifier;
         this.webhookEventDispatcher = webhookEventDispatcher;
         this.webhookAuditService = webhookAuditService;
+        this.businessValidationProperties = businessValidationProperties;
     }
 
     @PostMapping("/github")
@@ -43,8 +45,9 @@ public class WebhookController {
         @RequestBody String payload
     ) {
         String payloadHash = sha256Hex(payload);
+        String webhookSecret = businessValidationProperties.getGithub().getWebhookSecret();
 
-        if (!signatureVerifier.isValid(signature, payload, WEBHOOK_SECRET)) {
+        if (!signatureVerifier.isValid(signature, payload, webhookSecret)) {
             webhookAuditService.recordRejected(payloadHash, payload, "Invalid HMAC signature");
             throw new BusinessValidationException(403, "INVALID_WEBHOOK_SIGNATURE", "Webhook signature verification failed");
         }

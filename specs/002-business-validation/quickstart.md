@@ -305,6 +305,49 @@ mvn test -Dtest=UserSubscriptionsMigrationIntegrationTest
 # Output: "✅ user_subscriptions table migrated successfully"
 ```
 
+### Webhook Dispatch Latency
+
+```bash
+cd backend
+mvn test -Dtest=WebhookDispatchPerformanceTest
+
+# Verifies p95 receipt-to-publish latency stays <=100ms
+```
+
+### Multi-Tenant Leak Audit
+
+```bash
+cd backend
+mvn test -Dtest=MultiTenantSecurityAuditTest
+
+# Executes 1000 unauthorized cross-project requests
+# Output: all responses must be 403 Forbidden
+```
+
+### AI Extraction Accuracy Gate
+
+```bash
+cd backend
+mvn test -Dtest=AIExtractionAccuracyGateTest
+
+# Validates 20 fixture pairs and average similarity >= 0.95
+```
+
+### Full Phase 8 Gate Run
+
+```bash
+cd backend
+mvn -Dtest=Java17CompatibilityTest,SecretExposureAuditTest,UserSubscriptionsMigrationIntegrationTest,WebhookDispatchPerformanceTest,MultiTenantSecurityAuditTest,AIExtractionAccuracyGateTest test
+```
+
+**Validation Evidence**:
+- Java compatibility gate inspects compiled bytecode in `target/classes` and asserts major version 61.
+- Secret hygiene gate scans backend/frontend source trees for quoted secret literals instead of environment-driven configuration.
+- Migration integrity gate asserts the V3 migration contains the expected `user_subscriptions` schema and indexes.
+- Webhook latency gate measures controller receipt through event publication over 100 samples.
+- Multi-tenant audit executes 1000 unauthorized project requests and requires 1000 `403` responses.
+- AI accuracy gate validates the 20-case fixture corpus and enforces average similarity >= 0.95.
+
 ---
 
 ## 6. Troubleshooting

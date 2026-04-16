@@ -1,5 +1,6 @@
 package com.syncdoc.collaboration.webhook.integration;
 
+import com.syncdoc.collaboration.config.BusinessValidationProperties;
 import com.syncdoc.collaboration.exception.BusinessValidationExceptionHandler;
 import com.syncdoc.collaboration.webhook.controller.WebhookController;
 import com.syncdoc.collaboration.webhook.security.GitHubWebhookSignatureVerifier;
@@ -34,11 +35,21 @@ class WebhookControllerIntegrationTest {
     @Mock
     private WebhookAuditService webhookAuditService;
 
+    private BusinessValidationProperties businessValidationProperties;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        WebhookController controller = new WebhookController(signatureVerifier, webhookEventDispatcher, webhookAuditService);
+        businessValidationProperties = new BusinessValidationProperties();
+        businessValidationProperties.getGithub().setWebhookSecret("test-webhook-secret");
+
+        WebhookController controller = new WebhookController(
+            signatureVerifier,
+            webhookEventDispatcher,
+            webhookAuditService,
+            businessValidationProperties
+        );
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new BusinessValidationExceptionHandler())
             .build();
