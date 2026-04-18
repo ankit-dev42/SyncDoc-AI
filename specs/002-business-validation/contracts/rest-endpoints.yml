@@ -1,0 +1,402 @@
+openapi: 3.0.0
+info:
+  title: SyncDoc AI Business Validation API
+  version: 1.0.0
+  description: REST endpoints for subscription entitlement, project access, webhook handling, AI extraction, and deployment checks
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.syncdoc.ai
+    description: Production
+
+tags:
+  - name: Subscription
+    description: Subscription entitlement checks and status queries
+  - name: Project
+    description: Project documentation access and ownership verification
+  - name: Webhook
+    description: GitHub webhook intake and event dispatch
+  - name: AI Processing
+    description: AI documentation extraction status and results
+  - name: Quality
+    description: Deployment-readiness checks and health metrics
+
+paths:
+  /api/v1/subscriptions/{userId}/tier:
+    get:
+      tags:
+        - Subscription
+      summary: Get current subscription tier for user
+      operationId: getSubscriptionTier
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Authenticated user ID
+      responses:
+        '200':
+          description: Subscription tier retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '401':
+          description: Unauthorized; user not authenticated
+        '404':
+          description: User has no subscription record
+        '503':
+          description: Stripe API unavailable; using cached value if available
+      security:
+        - bearerAuth: []
+
+  /api/v1/subscriptions/{userId}/can-sync:
+    post:
+      tags:
+        - Subscription
+      summary: Check if user is authorized to sync a new repository
+      operationId: canUserSync
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncAuthorizationRequest'
+      responses:
+        '200':
+          description: Authorization decision returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncAuthorizationResponse'
+        '400':
+          description: Bad request; missing or invalid fields
+        '401':
+          description: Unauthorized; user not authenticated
+      security:
+        - bearerAuth: []
+
+  /api/v1/projects/{projectId}:
+    get:
+      tags:
+        - Project
+      summary: Get project documentation (authorization required)
+      operationId: getProject
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project retrieved (user is owner or has access)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '401':
+          description: Unauthorized; user not authenticated
+        '403':
+          description: Forbidden; user does not own or have access to this project
+        '404':
+          description: Project not found
+      security:
+        - bearerAuth: []
+
+  /api/v1/webhooks/github:
+    post:
+      tags:
+        - Webhook
+      summary: Receive GitHub webhook event (HMAC signature required)
+      operationId: receiveGitHubWebhook
+      parameters:
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+          description: GitHub HMAC-SHA256 signature in format "sha256=hexdigest"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: GitHub webhook payload (untyped JSON)
+      responses:
+        '202':
+          description: Webhook accepted; enqueued for processing
+        '400':
+          description: Bad request; missing required fields
+        '401':
+          description: Unauthorized; missing X-Hub-Signature-256 header
+        '403':
+          description: Forbidden; signature verification failed (forged payload)
+        '500':
+          description: Internal error during dispatch
+
+  /api/v1/ai/extract-status/{docId}:
+    get:
+      tags:
+        - AI Processing
+      summary: Get status of AI documentation extraction
+      operationId: getExtractionStatus
+      parameters:
+        - name: docId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Extraction status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractionStatusResponse'
+        '404':
+          description: Document not found or extraction record not found
+      security:
+        - bearerAuth: []
+
+  /api/v1/ai/extract-result/{docId}:
+    get:
+      tags:
+        - AI Processing
+      summary: Get extracted sections (Key Changes, Action Items) if completed
+      operationId: getExtractionResult
+      parameters:
+        - name: docId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Extraction completed; sections returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractionResultResponse'
+        '202':
+          description: Extraction still in progress
+        '404':
+          description: Document or extraction record not found
+        '500':
+          description: Extraction failed; error message included
+      security:
+        - bearerAuth: []
+
+  /health/java17:
+    get:
+      tags:
+        - Quality
+      summary: Verify Java 17 bytecode compliance
+      operationId: checkJava17Compliance
+      responses:
+        '200':
+          description: All bytecode is Java 17 compatible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Java17ComplianceResponse'
+        '500':
+          description: Non-Java 17 bytecode detected or compatibility check failed
+
+  /health/secrets:
+    post:
+      tags:
+        - Quality
+      summary: Scan for hardcoded secrets (deployment readiness check)
+      operationId: scanForSecrets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecretScanRequest'
+      responses:
+        '200':
+          description: No hardcoded secrets detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretScanResponse'
+        '400':
+          description: Hardcoded secrets found; deployment blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretScanFailureResponse'
+
+components:
+  schemas:
+    SubscriptionResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        tier:
+          type: string
+          enum: [FREE, PRO, ENTERPRISE]
+        status:
+          type: string
+          enum: [ACTIVE, CANCELED, EXPIRED, PAST_DUE]
+        stripeCustomerId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - userId
+        - tier
+        - status
+
+    SyncAuthorizationRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+        repositoryUrl:
+          type: string
+        currentSyncCount:
+          type: integer
+          minimum: 0
+      required:
+        - userId
+        - repositoryUrl
+        - currentSyncCount
+
+    SyncAuthorizationResponse:
+      type: object
+      properties:
+        authorized:
+          type: boolean
+        reason:
+          type: string
+          enum:
+            - "Active subscription allows sync"
+            - "Free tier limit exceeded; upgrade required"
+            - "Subscription inactive or expired"
+        recommendedAction:
+          type: string
+          nullable: true
+
+    ProjectResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        ownerId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        accessControl:
+          type: string
+          enum: [PRIVATE, SHARED]
+        createdAt:
+          type: string
+          format: date-time
+
+    ExtractionStatusResponse:
+      type: object
+      properties:
+        docId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED]
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        processingError:
+          type: string
+          nullable: true
+
+    ExtractionResultResponse:
+      type: object
+      properties:
+        docId:
+          type: string
+        keyChanges:
+          type: string
+        actionItems:
+          type: string
+        qualityScore:
+          type: number
+          format: double
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+
+    Java17ComplianceResponse:
+      type: object
+      properties:
+        compliant:
+          type: boolean
+        bytecodeVersion:
+          type: integer
+          description: "Expected: 61 (Java 17)"
+        details:
+          type: string
+
+    SecretScanRequest:
+      type: object
+      properties:
+        sourcePath:
+          type: string
+          description: Path to scan (e.g., src/, resources/)
+        excludePatterns:
+          type: array
+          items:
+            type: string
+          description: Regex patterns to exclude from scan
+
+    SecretScanResponse:
+      type: object
+      properties:
+        secretsFound:
+          type: boolean
+        message:
+          type: string
+
+    SecretScanFailureResponse:
+      type: object
+      properties:
+        secretsFound:
+          type: boolean
+        detectedSecrets:
+          type: array
+          items:
+            type: object
+            properties:
+              pattern:
+                type: string
+              location:
+                type: string
+              suggestion:
+                type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

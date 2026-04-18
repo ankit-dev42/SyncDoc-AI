@@ -1,0 +1,67 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong. Please try again.",
+    "retry": "Retry",
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "presence": {
+    "status": {
+      "ONLINE": "Online",
+      "AWAY": "Away",
+      "OFFLINE": "Do not disturb"
+    },
+    "setStatus": "Set your status",
+    "lastSeen": "Last seen {{time}}"
+  },
+  "messaging": {
+    "inputPlaceholder": "Type a message…",
+    "send": "Send",
+    "replyInThread": "Reply in thread",
+    "threadReplies_one": "{{count}} reply",
+    "threadReplies_other": "{{count}} replies",
+    "noMessages": "No messages yet. Start the conversation!",
+    "loadMore": "Load more messages"
+  },
+  "search": {
+    "placeholder": "Search messages…",
+    "noResults": "No results found for \"{{query}}\"",
+    "filterFrom": "From: {{user}}",
+    "filterChannel": "In: {{channel}}"
+  },
+  "workspace": {
+    "switchWorkspace": "Switch workspace",
+    "noWorkspaces": "No workspaces available",
+    "accessDenied": "You don't have access to this workspace"
+  },
+  "onboarding": {
+    "welcomeTitle": "Welcome to SyncDoc AI",
+    "welcomeSubtitle": "Real-time collaboration, built for your team",
+    "step1Title": "Send your first message",
+    "step1Body": "Type a message in any channel and press Enter to send.",
+    "step2Title": "Set your status",
+    "step2Body": "Let teammates know when you're available or away.",
+    "step3Title": "Search everything",
+    "step3Body": "Use the search bar to find any message across all channels.",
+    "dismiss": "Got it, let's go!"
+  },
+  "errors": {
+    "networkError": "Connection lost. Trying to reconnect…",
+    "authError": "Your session has expired. Please log in again.",
+    "rateLimited": "Too many requests. Please wait a moment and try again.",
+    "forbidden": "You don't have permission to do that.",
+    "projectAccessDenied": "Access denied: you don't own this project.",
+    "syncBlockedFreeTier": "Sync blocked due to free-tier limit. Upgrade to continue.",
+    "invalidPaymentInformation": "Invalid payment information. Please verify your card details and try again."
+  },
+  "billing": {
+    "upgradeToPro": "Upgrade to Pro",
+    "upgradeSuccess": "Upgrade complete! You now have Pro access.",
+    "upgradeRedirecting": "Redirecting to secure checkout…",
+    "paymentSuccessTitle": "Payment successful",
+    "paymentSuccessBody": "Your subscription has been updated successfully."
+  }
+}
