@@ -1,7 +1,8 @@
 package com.syncdoc.collaboration.project.integration;
 
 import com.syncdoc.collaboration.exception.BusinessValidationException;
-import com.syncdoc.collaboration.exception.BusinessValidationExceptionHandler;
+import com.syncdoc.collaboration.exception.GlobalExceptionHandler;
+import com.syncdoc.collaboration.exception.ResourceNotFoundException;
 import com.syncdoc.collaboration.project.controller.ProjectController;
 import com.syncdoc.collaboration.project.model.Project;
 import com.syncdoc.collaboration.project.security.ProjectAccessService;
@@ -14,6 +15,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -31,7 +34,7 @@ class ProjectControllerSecurityIntegrationTest {
     void setUp() {
         ProjectController controller = new ProjectController(projectAccessService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-            .setControllerAdvice(new BusinessValidationExceptionHandler())
+            .setControllerAdvice(new GlobalExceptionHandler())
             .build();
     }
 
@@ -64,13 +67,16 @@ class ProjectControllerSecurityIntegrationTest {
         mockMvc.perform(get("/api/v1/projects/project-1")
                 .principal(new UsernamePasswordAuthenticationToken("intruder", "N/A")))
             .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error").value("PROJECT_ACCESS_DENIED"))
             .andExpect(jsonPath("$.message").value("Access denied: you don't own this project."));
     }
 
     @Test
     void missingProjectIdShouldGet404() throws Exception {
-        mockMvc.perform(get("/api/v1/projects/")
+        when(projectAccessService.getOwnedProject(any(), eq("nonexistent-id")))
+            .thenThrow(new ResourceNotFoundException("Project not found"));
+
+        mockMvc.perform(get("/api/v1/projects/nonexistent-id")
                 .principal(new UsernamePasswordAuthenticationToken("owner-1", "N/A")))
             .andExpect(status().isNotFound());
     }

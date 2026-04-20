@@ -1,0 +1,525 @@
+openapi: "3.1.0"
+info:
+  title: SyncDoc AI — Phase 1 Auth REST Contract
+  description: |
+    Authentication and identity endpoints introduced in Phase 1: Foundation Security.
+    All endpoints live under the `/api/auth` prefix and are explicitly permitted
+    (no JWT required). Adjacent changes to `/api/v1/**` route security are captured
+    in the WebSecurityConfig notes below.
+  version: "1.0.0"
+  contact:
+    name: SyncDoc AI Engineering
+
+servers:
+  - url: http://localhost:8080
+    description: Local development (Spring Boot default port)
+  - url: https://api.syncdocai.com
+    description: Production
+
+tags:
+  - name: auth
+    description: Registration, login, token rotation, logout
+  - name: projects
+    description: Project endpoints (Phase 1 — DTO boundary fix only)
+  - name: subscriptions
+    description: Subscription endpoints (Phase 1 — stripeCustomerId removal only)
+
+# ---------------------------------------------------------------------------
+# Shared Schemas
+# ---------------------------------------------------------------------------
+
+components:
+  schemas:
+
+    ErrorResponse:
+      type: object
+      required: [error, message, details, timestamp, path]
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code
+          example: VALIDATION_FAILED
+          enum:
+            - VALIDATION_FAILED
+            - INVALID_ARGUMENT
+            - UNAUTHENTICATED
+            - TOKEN_EXPIRED
+            - INVALID_TOKEN
+            - TOKEN_REPLAYED
+            - ACCESS_DENIED
+            - MULTI_TENANCY_VIOLATION
+            - NOT_FOUND
+            - BUSINESS_VALIDATION
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Human-readable explanation
+          example: "Email is required"
+        details:
+          type: array
+          description: Per-field validation errors (populated for 400 only)
+          items:
+            $ref: "#/components/schemas/FieldError"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-04-18T10:30:00Z"
+        path:
+          type: string
+          example: /api/auth/register
+
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          example: email
+        rejectedValue:
+          description: The value that failed validation (may be null)
+          example: "not-an-email"
+        message:
+          type: string
+          example: "must be a valid email address"
+
+    UserResponse:
+      type: object
+      description: |
+        Safe user representation returned after registration.
+        NEVER includes passwordHash or emailVerified.
+      required: [id, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          example: "alice@example.com"
+        displayName:
+          type: string
+          nullable: true
+          example: "Alice"
+
+    TokenResponse:
+      type: object
+      description: |
+        Access token returned in response body after login or refresh.
+        The refresh token is set as an HttpOnly cookie — it does NOT appear here.
+      required: [accessToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          description: Signed HS256 JWT; valid for 15 minutes
+          example: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1NTBlODQwMC..."
+        tokenType:
+          type: string
+          enum: [Bearer]
+          example: Bearer
+        expiresIn:
+          type: integer
+          description: Seconds until the access token expires
+          example: 900
+
+    ProjectDto:
+      type: object
+      description: |
+        Safe project representation. NEVER includes owner, deletedAt,
+        or any JPA relation field.
+      required: [id, name, accessControl, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "My Docs Project"
+        accessControl:
+          type: string
+          enum: [PRIVATE, PUBLIC, TEAM]
+          example: PRIVATE
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SubscriptionTierResponse:
+      type: object
+      description: |
+        Subscription tier for a given user.
+        stripeCustomerId MUST NOT appear in this response (Gap 4.1 fix).
+      required: [userId, tier, status]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        tier:
+          type: string
+          enum: [FREE, PRO, ENTERPRISE]
+          example: PRO
+        status:
+          type: string
+          enum: [ACTIVE, CANCELED, PAST_DUE, TRIALING]
+          example: ACTIVE
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        HS256-signed JWT. Include in Authorization header:
+        `Authorization: Bearer <accessToken>`
+
+  headers:
+    SetRefreshTokenCookie:
+      description: |
+        HttpOnly, SameSite=Strict refresh token cookie.
+        Set by /login and /refresh; cleared by /logout.
+        Path is restricted to /api/auth/refresh.
+      schema:
+        type: string
+      example: >
+        refreshToken=<raw-uuid>; HttpOnly; SameSite=Strict;
+        Path=/api/auth/refresh; Max-Age=604800
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+paths:
+
+  /api/auth/register:
+    post:
+      tags: [auth]
+      operationId: registerUser
+      summary: Register a new user
+      description: |
+        Creates a new user account. Password is hashed with BCrypt (cost 10)
+        before storage. The raw password is never persisted or logged.
+        Returns 201 with user id, email, and displayName.
+
+        **Does NOT return**: passwordHash, emailVerified, or any token.
+        The client must POST to /api/auth/login to obtain tokens.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "alice@example.com"
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  description: Plain-text password; BCrypt-hashed server-side
+                  example: "correct-horse-battery-staple"
+                displayName:
+                  type: string
+                  maxLength: 100
+                  nullable: true
+                  example: "Alice"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Validation error (invalid email, password too short)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: VALIDATION_FAILED
+                message: "Validation failed"
+                details:
+                  - field: email
+                    rejectedValue: "not-an-email"
+                    message: "must be a valid email address"
+                timestamp: "2026-04-18T10:30:00Z"
+                path: /api/auth/register
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: BUSINESS_VALIDATION
+                message: "Email is already registered"
+                details: []
+                timestamp: "2026-04-18T10:30:00Z"
+                path: /api/auth/register
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      operationId: loginUser
+      summary: Authenticate and obtain tokens
+      description: |
+        Verifies email and password. On success, returns an access token in the
+        response body and sets an HttpOnly refresh token cookie.
+
+        **Rate limited**: 10 requests per minute per originating IP (FR-012).
+        Requests 11+ within 60 seconds return 429.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "alice@example.com"
+                password:
+                  type: string
+                  example: "correct-horse-battery-staple"
+      responses:
+        "200":
+          description: Login successful
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/SetRefreshTokenCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: UNAUTHENTICATED
+                message: "Invalid email or password"
+                details: []
+                timestamp: "2026-04-18T10:30:00Z"
+                path: /api/auth/login
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: BUSINESS_VALIDATION
+                message: "Too many requests. Try again in 60 seconds."
+                details: []
+                timestamp: "2026-04-18T10:30:00Z"
+                path: /api/auth/login
+
+  /api/auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refreshTokens
+      summary: Rotate refresh token and issue new access token
+      description: |
+        Reads the `refreshToken` HttpOnly cookie. Validates it against the stored
+        SHA-256 hash. On success, issues a new access token (body) and a new
+        refresh token (cookie), and revokes the old token (strict rotation).
+
+        **Family revocation**: If a revoked token is presented outside the 2-second
+        grace window, ALL refresh tokens for this user are deleted and 401 is returned.
+
+        **Grace window**: If a revoked token is presented within 2 seconds of its
+        rotation (`replaced_at` column), the request is accepted and the already-issued
+        new token is returned. This handles concurrent mobile refresh calls.
+
+        **Binding check**: The `User-Agent` and client IP must match the values recorded
+        at token issuance. A mismatch triggers family revocation + 401.
+      security: []
+      parameters:
+        - in: cookie
+          name: refreshToken
+          required: true
+          schema:
+            type: string
+          description: Raw UUID refresh token (set by /login or previous /refresh)
+      responses:
+        "200":
+          description: Tokens rotated successfully
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/SetRefreshTokenCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          description: |
+            Invalid, expired, or revoked refresh token.
+            `error` values:
+            - `TOKEN_REPLAYED`: revoked token presented outside grace window → family revocation triggered
+            - `INVALID_TOKEN`: cookie missing or hash not found in DB
+            - `UNAUTHENTICATED`: token expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: TOKEN_REPLAYED
+                message: "Refresh token has been replayed. All sessions terminated."
+                details: []
+                timestamp: "2026-04-18T10:30:00Z"
+                path: /api/auth/refresh
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logoutUser
+      summary: Revoke refresh token and clear cookie
+      description: |
+        Hashes the incoming `refreshToken` cookie value and marks the matching
+        record as `revoked = true`. Responds with 204 and a `Set-Cookie` header
+        that zeroes out the cookie (`Max-Age=0`).
+
+        If the cookie is absent or the token is already revoked, still returns 204
+        (idempotent logout).
+      security: []
+      parameters:
+        - in: cookie
+          name: refreshToken
+          required: false
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Logged out (cookie cleared)
+          headers:
+            Set-Cookie:
+              description: Clears the refresh token cookie
+              schema:
+                type: string
+              example: "refreshToken=; HttpOnly; SameSite=Strict; Path=/api/auth/refresh; Max-Age=0"
+
+  # ---------------------------------------------------------------------------
+  # Route Security Notes (not new endpoints — security changes to existing)
+  # ---------------------------------------------------------------------------
+
+  /api/v1/projects/{projectId}:
+    get:
+      tags: [projects]
+      operationId: getProject
+      summary: Get project by ID (DTO boundary enforced in Phase 1)
+      description: |
+        **Phase 1 change**: Return type changed from `Project` entity to `ProjectDto`.
+        Response no longer contains `owner`, `deletedAt`, or any JPA relation field.
+        Route now requires JWT — returns 401 without Bearer token.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/ProjectDto"
+        "401":
+          description: No valid JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Authenticated but not the project owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/subscriptions/{userId}/tier:
+    get:
+      tags: [subscriptions]
+      operationId: getSubscriptionTier
+      summary: Get subscription tier (stripeCustomerId removed in Phase 1)
+      description: |
+        **Phase 1 change**: `stripeCustomerId` field removed from response (Gap 4.1 fix).
+        Response now contains only `{userId, tier, status}`.
+        Route requires JWT.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Subscription tier
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/SubscriptionTierResponse"
+        "401":
+          description: No valid JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+# ---------------------------------------------------------------------------
+# Route Access Matrix (from WebSecurityConfig Phase 1 overhaul)
+# ---------------------------------------------------------------------------
+# Public (no JWT required):
+#   /api/auth/**
+#   /api/v1/webhooks/**
+#   /api/v1/billing/stripe-webhook
+#   /actuator/health
+#   /actuator/info
+#   /ws/**
+#
+# Protected (JWT required):
+#   /api/v1/** (all except above)
+# ---------------------------------------------------------------------------

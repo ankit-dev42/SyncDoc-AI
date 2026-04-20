@@ -1,94 +1,148 @@
 package com.syncdoc.collaboration.exception;
 
-import com.syncdoc.collaboration.common.dto.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Single unified exception handler — all 4xx/5xx responses use {@link ErrorResponse}.
+ * {@code @Order(1)} ensures this advice takes precedence over any residual advice beans.
+ */
+@Order(1)
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // -----------------------------------------------------------------------
-    // 400 – Validation
+    // 400 — Validation
     // -----------------------------------------------------------------------
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleValidation(
+    public ResponseEntity<ErrorResponse> handleValidation(
         MethodArgumentNotValidException ex, HttpServletRequest request
     ) {
-        String details = ex.getBindingResult().getFieldErrors().stream()
-            .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
-            .collect(Collectors.joining("; "));
-        logger.debug("Validation failure on {}: {}", request.getRequestURI(), details);
-        return ResponseEntity.badRequest().body(ApiResponse.error("Validation failed: " + details));
+        List<ErrorResponse.FieldError> details = ex.getBindingResult().getFieldErrors().stream()
+            .map(fe -> new ErrorResponse.FieldError(fe.getField(), fe.getRejectedValue(), fe.getDefaultMessage()))
+            .collect(Collectors.toList());
+
+        logger.debug("Validation failure on {}: {} field(s)", request.getRequestURI(), details.size());
+        return ResponseEntity.badRequest().body(new ErrorResponse(
+            "VALIDATION_FAILED", "Request validation failed", details, Instant.now(), request.getRequestURI()
+        ));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(
-        ConstraintViolationException ex
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(
+        ConstraintViolationException ex, HttpServletRequest request
     ) {
-        String details = ex.getConstraintViolations().stream()
-            .map(cv -> cv.getPropertyPath() + ": " + cv.getMessage())
-            .collect(Collectors.joining("; "));
-        return ResponseEntity.badRequest().body(ApiResponse.error("Constraint violation: " + details));
-    }
+        List<ErrorResponse.FieldError> details = ex.getConstraintViolations().stream()
+            .map(cv -> new ErrorResponse.FieldError(
+                cv.getPropertyPath().toString(), cv.getInvalidValue(), cv.getMessage()))
+            .collect(Collectors.toList());
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));
+        return ResponseEntity.badRequest().body(new ErrorResponse(
+            "CONSTRAINT_VIOLATION", "Constraint validation failed", details, Instant.now(), request.getRequestURI()
+        ));
     }
 
     // -----------------------------------------------------------------------
-    // 403 – Access denied
+    // Business validation — merged from BusinessValidationExceptionHandler
+    // -----------------------------------------------------------------------
+
+    @ExceptionHandler(BusinessValidationException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessValidation(
+        BusinessValidationException ex, HttpServletRequest request
+    ) {
+        logger.warn("Business validation failure on {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.valueOf(ex.getStatusCode())).body(new ErrorResponse(
+            ex.getErrorCode(), ex.getMessage(), List.of(), Instant.now(), request.getRequestURI()
+        ));
+    }
+
+    // -----------------------------------------------------------------------
+    // 401/403 — Auth
     // -----------------------------------------------------------------------
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
         AccessDeniedException ex, HttpServletRequest request
     ) {
         logger.warn("Access denied to {} from {}", request.getRequestURI(), request.getRemoteAddr());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-            .body(ApiResponse.error("Access denied"));
-    }
-
-    @ExceptionHandler(MultiTenancyViolationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMultiTenancy(MultiTenancyViolationException ex) {
-        logger.warn("Multi-tenancy violation: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-            .body(ApiResponse.error("You do not have access to this workspace"));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(
+            "ACCESS_DENIED", "You do not have permission to access this resource",
+            List.of(), Instant.now(), request.getRequestURI()
+        ));
     }
 
     // -----------------------------------------------------------------------
-    // 404 – Not found
+    // 404 — Not found
     // -----------------------------------------------------------------------
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(ApiResponse.error(ex.getMessage()));
+    public ResponseEntity<ErrorResponse> handleNotFound(
+        ResourceNotFoundException ex, HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(
+            "NOT_FOUND", ex.getMessage(), List.of(), Instant.now(), request.getRequestURI()
+        ));
     }
 
     // -----------------------------------------------------------------------
-    // 500 – Unexpected errors
+    // Spring ResponseStatusException (used by services)
+    // -----------------------------------------------------------------------
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatus(
+        ResponseStatusException ex, HttpServletRequest request
+    ) {
+        return ResponseEntity.status(ex.getStatusCode()).body(new ErrorResponse(
+            "REQUEST_ERROR", ex.getReason() != null ? ex.getReason() : ex.getMessage(),
+            List.of(), Instant.now(), request.getRequestURI()
+        ));
+    }
+
+    // -----------------------------------------------------------------------
+    // Multi-tenancy violations
+    // -----------------------------------------------------------------------
+
+    @ExceptionHandler(MultiTenancyViolationException.class)
+    public ResponseEntity<ErrorResponse> handleMultiTenancy(
+        MultiTenancyViolationException ex, HttpServletRequest request
+    ) {
+        logger.warn("Multi-tenancy violation: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(
+            "TENANCY_VIOLATION", "You do not have access to this workspace",
+            List.of(), Instant.now(), request.getRequestURI()
+        ));
+    }
+
+    // -----------------------------------------------------------------------
+    // 500 — Fallback
     // -----------------------------------------------------------------------
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleUnexpected(
+    public ResponseEntity<ErrorResponse> handleUnexpected(
         Exception ex, HttpServletRequest request
     ) {
         logger.error("Unexpected error on {} {}", request.getMethod(), request.getRequestURI(), ex);
-        return ResponseEntity.internalServerError()
-            .body(ApiResponse.error("An unexpected error occurred. Please try again later."));
+        return ResponseEntity.internalServerError().body(new ErrorResponse(
+            "INTERNAL_ERROR", "An unexpected error occurred. Please try again later.",
+            List.of(), Instant.now(), request.getRequestURI()
+        ));
     }
 }
+

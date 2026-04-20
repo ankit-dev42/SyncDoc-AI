@@ -1,6 +1,7 @@
 package com.syncdoc.collaboration.project.controller;
 
 import com.syncdoc.collaboration.common.dto.ApiResponse;
+import com.syncdoc.collaboration.project.dto.ProjectDto;
 import com.syncdoc.collaboration.project.model.Project;
 import com.syncdoc.collaboration.project.security.ProjectAccessService;
 import jakarta.validation.constraints.NotBlank;
@@ -24,12 +25,12 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}")
-    public ResponseEntity<ApiResponse<Project>> getProject(
+    public ResponseEntity<ApiResponse<ProjectDto>> getProject(
         @PathVariable @NotBlank String projectId,
         Authentication authentication
     ) {
         String userId = String.valueOf(authentication.getPrincipal());
         Project project = projectAccessService.getOwnedProject(userId, projectId);
-        return ResponseEntity.ok(ApiResponse.success("Project retrieved", project));
+        return ResponseEntity.ok(ApiResponse.success("Project retrieved", ProjectDto.from(project)));
     }
 }

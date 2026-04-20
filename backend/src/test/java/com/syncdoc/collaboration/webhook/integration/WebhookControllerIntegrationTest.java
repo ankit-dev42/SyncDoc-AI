@@ -1,7 +1,7 @@
 package com.syncdoc.collaboration.webhook.integration;
 
 import com.syncdoc.collaboration.config.BusinessValidationProperties;
-import com.syncdoc.collaboration.exception.BusinessValidationExceptionHandler;
+import com.syncdoc.collaboration.exception.GlobalExceptionHandler;
 import com.syncdoc.collaboration.webhook.controller.WebhookController;
 import com.syncdoc.collaboration.webhook.security.GitHubWebhookSignatureVerifier;
 import com.syncdoc.collaboration.webhook.service.WebhookAuditService;
@@ -51,7 +51,7 @@ class WebhookControllerIntegrationTest {
             businessValidationProperties
         );
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-            .setControllerAdvice(new BusinessValidationExceptionHandler())
+            .setControllerAdvice(new GlobalExceptionHandler())
             .build();
     }
 

@@ -1,16 +1,38 @@
 package com.syncdoc.collaboration.webhook.security;
 
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Verifies GitHub webhook HMAC-SHA256 signatures.
+ * Fails fast at startup if {@code GITHUB_WEBHOOK_SECRET} is blank.
+ */
 @Component
 public class GitHubWebhookSignatureVerifier {
 
     private static final String PREFIX = "sha256=";
     private static final String HMAC_SHA256 = "HmacSHA256";
+
+    @Value("${integrations.github.webhook-secret:}")
+    private String webhookSecret;
+
+    /**
+     * Validates that the GitHub webhook secret is configured.
+     * Throws {@link IllegalStateException} at startup if the secret is blank.
+     */
+    @PostConstruct
+    public void validateConfiguration() {
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            throw new IllegalStateException(
+                "GITHUB_WEBHOOK_SECRET must not be blank. " +
+                "Set it via the GITHUB_WEBHOOK_SECRET environment variable.");
+        }
+    }
 
     public boolean isValid(String signatureHeader, String payload, String secret) {
         if (signatureHeader == null || !signatureHeader.startsWith(PREFIX) || secret == null || secret.isBlank()) {
@@ -53,3 +75,4 @@ public class GitHubWebhookSignatureVerifier {
         return result == 0;
     }
 }
+

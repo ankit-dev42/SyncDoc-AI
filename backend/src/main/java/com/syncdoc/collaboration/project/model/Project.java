@@ -28,9 +28,7 @@ public class Project {
     @Column(name = "id", nullable = false, updatable = false)
     private String id;
 
-    @NotBlank
-    @Size(max = 100)
-    @Column(name = "owner_id", nullable = false, length = 100)
+    @Column(name = "owner_id", nullable = false, columnDefinition = "UUID")
     private String ownerId;
 
     @NotBlank

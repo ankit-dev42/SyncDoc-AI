@@ -1,5 +1,7 @@
 package com.syncdoc.collaboration.messaging.controller;
 
+import com.syncdoc.collaboration.messaging.dto.MessageDto;
+import com.syncdoc.collaboration.messaging.dto.MessageThreadDto;
 import com.syncdoc.collaboration.messaging.model.Message;
 import com.syncdoc.collaboration.messaging.model.MessageThread;
 import com.syncdoc.collaboration.messaging.service.MessageService;
@@ -35,7 +37,7 @@ public class MessageController {
     private ThreadService threadService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Message>> sendMessage(
+    public ResponseEntity<ApiResponse<MessageDto>> sendMessage(
             @PathVariable @NotBlank String workspaceId,
             @PathVariable @NotBlank String channelId,
             @Valid @RequestBody SendMessageRequest request) {
@@ -51,52 +53,53 @@ public class MessageController {
             request.getParentMessageId()
         );
 
-        return ResponseEntity.ok(ApiResponse.success("Message sent successfully", message));
+        return ResponseEntity.ok(ApiResponse.success("Message sent successfully", new MessageDto(message)));
     }
 
     @GetMapping
-    public ResponseEntity<PagedResponse<Message>> getMessages(
+    public ResponseEntity<PagedResponse<MessageDto>> getMessages(
             @PathVariable @NotBlank String workspaceId,
             @PathVariable @NotBlank String channelId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Message> messages = messageService.getMessages(workspaceId, channelId, pageable);
+        Page<MessageDto> messages = messageService.getMessages(workspaceId, channelId, pageable).map(MessageDto::new);
 
         return ResponseEntity.ok(PagedResponse.of(messages));
     }
 
     @GetMapping("/after/{sequenceNumber}")
-    public ResponseEntity<ApiResponse<List<Message>>> getMessagesAfterSequence(
+    public ResponseEntity<ApiResponse<List<MessageDto>>> getMessagesAfterSequence(
             @PathVariable @NotBlank String workspaceId,
             @PathVariable @NotBlank String channelId,
             @PathVariable Long sequenceNumber) {
 
-        List<Message> messages = messageService.getMessagesAfterSequence(workspaceId, channelId, sequenceNumber);
+        List<MessageDto> messages = messageService.getMessagesAfterSequence(workspaceId, channelId, sequenceNumber)
+                .stream().map(MessageDto::new).toList();
         return ResponseEntity.ok(ApiResponse.success("Messages retrieved", messages));
     }
 
     @GetMapping("/before/{sequenceNumber}")
-    public ResponseEntity<PagedResponse<Message>> getMessagesBeforeSequence(
+    public ResponseEntity<PagedResponse<MessageDto>> getMessagesBeforeSequence(
             @PathVariable @NotBlank String workspaceId,
             @PathVariable @NotBlank String channelId,
             @PathVariable Long sequenceNumber,
             @RequestParam(defaultValue = "50") int limit) {
 
-        Page<Message> messages = messageService.getMessagesBeforeSequence(workspaceId, channelId, sequenceNumber, limit);
+        Page<MessageDto> messages = messageService.getMessagesBeforeSequence(workspaceId, channelId, sequenceNumber, limit).map(MessageDto::new);
         return ResponseEntity.ok(PagedResponse.of(messages));
     }
 
     @PutMapping("/{messageId}")
-    public ResponseEntity<ApiResponse<Message>> editMessage(
+    public ResponseEntity<ApiResponse<MessageDto>> editMessage(
             @PathVariable @NotBlank String workspaceId,
             @PathVariable @NotBlank String channelId,
             @PathVariable @NotBlank String messageId,
             @Valid @RequestBody EditMessageRequest request) {
 
         Message message = messageService.editMessage(messageId, request.getContent(), request.getEditorId());
-        return ResponseEntity.ok(ApiResponse.success("Message edited successfully", message));
+        return ResponseEntity.ok(ApiResponse.success("Message edited successfully", new MessageDto(message)));
     }
 
     @DeleteMapping("/{messageId}")
@@ -111,7 +114,7 @@ public class MessageController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<PagedResponse<Message>> searchMessages(
+    public ResponseEntity<PagedResponse<MessageDto>> searchMessages(
             @PathVariable @NotBlank String workspaceId,
             @PathVariable @NotBlank String channelId,
             @RequestParam @NotBlank String query,
@@ -119,39 +122,40 @@ public class MessageController {
             @RequestParam(defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Message> messages = messageService.searchMessages(workspaceId, channelId, query, pageable);
+        Page<MessageDto> messages = messageService.searchMessages(workspaceId, channelId, query, pageable).map(MessageDto::new);
 
         return ResponseEntity.ok(PagedResponse.of(messages));
     }
 
     @GetMapping("/thread/{parentMessageId}")
-    public ResponseEntity<ApiResponse<List<Message>>> getThreadReplies(
+    public ResponseEntity<ApiResponse<List<MessageDto>>> getThreadReplies(
             @PathVariable @NotBlank String workspaceId,
             @PathVariable @NotBlank String channelId,
             @PathVariable @NotBlank String parentMessageId) {
 
-        List<Message> replies = messageService.getThreadReplies(parentMessageId);
+        List<MessageDto> replies = messageService.getThreadReplies(parentMessageId)
+                .stream().map(MessageDto::new).toList();
         return ResponseEntity.ok(ApiResponse.success("Thread replies retrieved", replies));
     }
 
     @GetMapping("/threads")
-    public ResponseEntity<ApiResponse<List<MessageThread>>> getThreads(
+    public ResponseEntity<ApiResponse<List<MessageThreadDto>>> getThreads(
         @PathVariable @NotBlank String workspaceId,
         @PathVariable @NotBlank String channelId
     ) {
-        return ResponseEntity.ok(ApiResponse.success(
-            "Thread list retrieved",
-            threadService.listByChannel(workspaceId, channelId)
-        ));
+        List<MessageThreadDto> threads = threadService.listByChannel(workspaceId, channelId)
+                .stream().map(MessageThreadDto::new).toList();
+        return ResponseEntity.ok(ApiResponse.success("Thread list retrieved", threads));
     }
 
     @GetMapping("/threads/{rootMessageId}")
-    public ResponseEntity<ApiResponse<MessageThread>> getThreadByRootMessageId(
+    public ResponseEntity<ApiResponse<MessageThreadDto>> getThreadByRootMessageId(
         @PathVariable @NotBlank String workspaceId,
         @PathVariable @NotBlank String channelId,
         @PathVariable @NotBlank String rootMessageId
     ) {
-        MessageThread thread = threadService.getThreadByRootMessageId(rootMessageId)
+        MessageThreadDto thread = threadService.getThreadByRootMessageId(rootMessageId)
+            .map(MessageThreadDto::new)
             .orElseThrow(() -> new IllegalArgumentException("Thread not found for root message: " + rootMessageId));
 
         return ResponseEntity.ok(ApiResponse.success("Thread details retrieved", thread));

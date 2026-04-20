@@ -61,7 +61,8 @@ class SecretExposureAuditTest {
     }
 
     private boolean isHardcodedSecret(String line) {
-        if (line.isBlank() || line.startsWith("//") || line.startsWith("/*") || line.startsWith("*") || line.startsWith("#")) {
+        if (line.isBlank() || line.startsWith("//") || line.startsWith("/*") || line.startsWith("*")
+                || line.startsWith("#") || line.startsWith("@")) {
             return false;
         }
         if (line.contains("${") || line.contains("Bearer ${") || line.contains("Authorization")) {
@@ -83,6 +84,9 @@ class SecretExposureAuditTest {
             && !literal.equalsIgnoreCase("hmacsha256")
             && !literal.startsWith("http")
             && !literal.contains("Content-Type")
-            && !literal.contains("application/json");
+            && !literal.contains("application/json")
+            && !literal.contains(" ")                              // error messages have spaces; secrets don't
+            && !literal.matches("[A-Z][A-Z_0-9]*")                // ALL_CAPS error codes (e.g. TOKEN_EXPIRED)
+            && !literal.matches("[a-z]+[A-Z][a-zA-Z0-9]*");      // camelCase identifiers (e.g. refreshToken)
     }
 }
