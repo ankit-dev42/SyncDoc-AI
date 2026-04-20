@@ -1,3 +1,14 @@
+# Root-level planning/internal docs (not for VCS)
+/*.md
+!README.md
+
+# Environment / secrets
+.env*
+**/.env*
+*.properties
+!backend/src/main/resources/*.yml
+!backend/src/test/resources/*.yml
+
 # Java
 target/
 *.class
@@ -10,7 +21,6 @@ node_modules/
 dist/
 build/
 *.log
-.env*
 
 # PostgreSQL/MySQL
 # No specific patterns, but perhaps logs if any

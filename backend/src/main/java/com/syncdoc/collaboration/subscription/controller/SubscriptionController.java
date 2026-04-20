@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+
 @RestController
 @RequestMapping("/api/v1/subscriptions")
 @PreAuthorize("isAuthenticated()")
@@ -41,10 +43,9 @@ public class SubscriptionController {
     ) {
         UserSubscription subscription = subscriptionService.getSubscription(userId);
         SubscriptionTierResponse response = new SubscriptionTierResponse(
-            userId,
             subscription.getTier().name(),
             subscription.getStatus().name(),
-            subscription.getStripeCustomerId()
+            subscription.getExpiresAt()
         );
 
         return ResponseEntity.ok(ApiResponse.success("Subscription tier retrieved", response));
@@ -81,10 +82,9 @@ public class SubscriptionController {
     }
 
     public record SubscriptionTierResponse(
-        String userId,
         String tier,
         String status,
-        String stripeCustomerId
+        Instant expiresAt
     ) {
     }
 

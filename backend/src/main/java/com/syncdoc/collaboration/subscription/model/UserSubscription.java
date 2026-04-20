@@ -28,9 +28,7 @@ public class UserSubscription {
     @Column(name = "id", nullable = false, updatable = false)
     private String id;
 
-    @NotBlank
-    @Size(max = 100)
-    @Column(name = "user_id", nullable = false, unique = true, length = 100)
+    @Column(name = "user_id", nullable = false, unique = true, columnDefinition = "UUID")
     private String userId;
 
     @NotNull

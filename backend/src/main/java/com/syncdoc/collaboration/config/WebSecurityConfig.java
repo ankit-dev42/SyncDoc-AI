@@ -1,30 +1,49 @@
 package com.syncdoc.collaboration.config;
 
-import com.syncdoc.collaboration.tenancy.security.HeaderAuthenticationFilter;
+import com.syncdoc.collaboration.security.JwtAuthenticationFilter;
+import com.syncdoc.collaboration.security.RateLimitFilter;
 import com.syncdoc.collaboration.tenancy.security.WorkspaceMembershipFilter;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
+/**
+ * Spring Security configuration: stateless JWT-based auth, route lockdown,
+ * CORS from environment variable, and filter registration order.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class WebSecurityConfig {
 
-    private final HeaderAuthenticationFilter headerAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final WorkspaceMembershipFilter workspaceMembershipFilter;
 
+    @Value("${FRONTEND_ORIGIN:http://localhost:5173}")
+    private String frontendOrigin;
+
     public WebSecurityConfig(
-        HeaderAuthenticationFilter headerAuthenticationFilter,
+        JwtAuthenticationFilter jwtAuthenticationFilter,
+        RateLimitFilter rateLimitFilter,
         WorkspaceMembershipFilter workspaceMembershipFilter
     ) {
-        this.headerAuthenticationFilter = headerAuthenticationFilter;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitFilter = rateLimitFilter;
         this.workspaceMembershipFilter = workspaceMembershipFilter;
     }
 
@@ -32,16 +51,59 @@ public class WebSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .httpBasic(Customizer.withDefaults())
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/ws/**").permitAll()
-                .requestMatchers("/api/v1/workspaces/**").authenticated()
-                .anyRequest().permitAll()
+                .requestMatchers(
+                    "/api/auth/**",
+                    "/api/v1/webhooks/**",
+                    "/api/v1/billing/stripe-webhook",
+                    "/actuator/health",
+                    "/actuator/info",
+                    "/ws/**"
+                ).permitAll()
+                .anyRequest().authenticated()
             )
-            .addFilterBefore(headerAuthenticationFilter, AnonymousAuthenticationFilter.class)
-            .addFilterAfter(workspaceMembershipFilter, HeaderAuthenticationFilter.class);
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedEntryPoint()))
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAt(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(workspaceMembershipFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationEntryPoint unauthorizedEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"UNAUTHORIZED\",\"message\":\"" + authException.getMessage() + "\"}");
+        };
+    }
+
+    /**
+     * CORS configuration sourced from the {@code FRONTEND_ORIGIN} environment variable.
+     * Wildcard {@code *} is never used.
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(frontendOrigin));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
+    /**
+     * BCrypt password encoder bean — shared across the application.
+     * Default strength (10 rounds) per Phase 1 assumptions.
+     */
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }
