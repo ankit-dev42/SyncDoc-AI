@@ -13,14 +13,19 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "projects", indexes = {
     @Index(name = "idx_project_owner", columnList = "owner_id"),
     @Index(name = "idx_project_created", columnList = "created_at")
 })
+@SQLRestriction("deleted_at IS NULL")
+@SQLDelete(sql = "UPDATE projects SET deleted_at = NOW() WHERE id = ?")
 public class Project {
 
     @Id
@@ -29,7 +34,7 @@ public class Project {
     private String id;
 
     @Column(name = "owner_id", nullable = false, columnDefinition = "UUID")
-    private String ownerId;
+    private UUID ownerId;
 
     @NotBlank
     @Size(max = 255)
@@ -50,6 +55,9 @@ public class Project {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     public Project() {
     }
 
@@ -61,11 +69,11 @@ public class Project {
         this.id = id;
     }
 
-    public String getOwnerId() {
+    public UUID getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(String ownerId) {
+    public void setOwnerId(UUID ownerId) {
         this.ownerId = ownerId;
     }
 
@@ -109,6 +117,14 @@ public class Project {
         this.updatedAt = updatedAt;
     }
 
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
@@ -125,6 +141,8 @@ public class Project {
 
     public enum AccessControl {
         PRIVATE,
+        PUBLIC,
+        TEAM,
         SHARED
     }
 }

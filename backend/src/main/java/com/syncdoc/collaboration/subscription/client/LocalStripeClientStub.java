@@ -27,4 +27,19 @@ public class LocalStripeClientStub implements StripeClient {
             Instant.now().plus(365, ChronoUnit.DAYS)
         ));
     }
+
+    @Override
+    public Optional<CheckoutSessionResult> createCheckoutSession(String userId, String priceId) {
+        return Optional.of(new CheckoutSessionResult(
+            "https://checkout.stripe.com/pay/cs_test_stub_" + userId,
+            "cs_test_stub_" + userId
+        ));
+    }
+
+    @Override
+    public Optional<PortalSessionResult> createPortalSession(String customerId) {
+        return Optional.of(new PortalSessionResult(
+            "https://billing.stripe.com/p/session/stub_" + customerId
+        ));
+    }
 }

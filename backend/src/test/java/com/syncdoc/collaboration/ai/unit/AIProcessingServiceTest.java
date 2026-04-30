@@ -51,9 +51,9 @@ class AIProcessingServiceTest {
         );
 
         ArgumentCaptor<GeneratedDocumentation> captor = ArgumentCaptor.forClass(GeneratedDocumentation.class);
-        verify(generatedDocumentationRepository, times(1)).save(captor.capture());
+        verify(generatedDocumentationRepository, times(2)).save(captor.capture());
 
-        GeneratedDocumentation persisted = captor.getValue();
+        GeneratedDocumentation persisted = captor.getAllValues().get(1);
         assertThat(saved.getStatus()).isEqualTo(GeneratedDocumentation.ProcessingStatus.COMPLETED);
         assertThat(persisted.getUserId()).isEqualTo("user-123");
         assertThat(persisted.getSourceContentId()).isEqualTo("source-123");
@@ -76,9 +76,9 @@ class AIProcessingServiceTest {
         );
 
         ArgumentCaptor<GeneratedDocumentation> captor = ArgumentCaptor.forClass(GeneratedDocumentation.class);
-        verify(generatedDocumentationRepository, times(1)).save(captor.capture());
+        verify(generatedDocumentationRepository, times(2)).save(captor.capture());
 
-        GeneratedDocumentation persisted = captor.getValue();
+        GeneratedDocumentation persisted = captor.getAllValues().get(1);
         assertThat(saved.getStatus()).isEqualTo(GeneratedDocumentation.ProcessingStatus.FAILED);
         assertThat(persisted.getProcessingError()).contains("Malformed AI response");
         assertThat(persisted.getCompletedAt()).isNotNull();

@@ -12,4 +12,6 @@ public interface WebhookEventRepository extends JpaRepository<WebhookEvent, Stri
     Optional<WebhookEvent> findByPayloadHash(String payloadHash);
 
     List<WebhookEvent> findByStatus(WebhookStatus status);
+
+    boolean existsByPayloadHash(String payloadHash);
 }

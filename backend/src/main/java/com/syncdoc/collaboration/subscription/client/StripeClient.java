@@ -10,11 +10,26 @@ public interface StripeClient {
 
     Optional<SubscriptionSnapshot> fetchSubscription(String userId);
 
+    Optional<CheckoutSessionResult> createCheckoutSession(String userId, String priceId);
+
+    Optional<PortalSessionResult> createPortalSession(String customerId);
+
     record SubscriptionSnapshot(
         SubscriptionTier tier,
         SubscriptionStatus status,
         String stripeCustomerId,
         Instant expiresAt
+    ) {
+    }
+
+    record CheckoutSessionResult(
+        String checkoutUrl,
+        String sessionId
+    ) {
+    }
+
+    record PortalSessionResult(
+        String portalUrl
     ) {
     }
 }

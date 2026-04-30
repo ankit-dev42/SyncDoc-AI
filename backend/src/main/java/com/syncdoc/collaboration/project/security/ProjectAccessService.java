@@ -5,6 +5,8 @@ import com.syncdoc.collaboration.project.model.Project;
 import com.syncdoc.collaboration.project.repository.ProjectRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class ProjectAccessService {
 
@@ -22,7 +24,7 @@ public class ProjectAccessService {
                 "Project not found: " + projectId
             ));
 
-        if (!project.getOwnerId().equals(userId)) {
+        if (!project.getOwnerId().equals(UUID.fromString(userId))) {
             throw new BusinessValidationException(
                 403,
                 "PROJECT_ACCESS_DENIED",

@@ -27,11 +27,18 @@ class SubscriptionServiceTest {
     @Mock
     private StripeClient stripeClient;
 
+    @Mock
+    private org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
+
+    @Mock
+    private org.springframework.data.redis.core.ValueOperations<String, Object> valueOperations;
+
     private SubscriptionService service;
 
     @BeforeEach
     void setUp() {
-        service = new SubscriptionService(repository, stripeClient);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        service = new SubscriptionService(repository, stripeClient, redisTemplate);
     }
 
     @Test

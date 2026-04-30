@@ -36,4 +36,20 @@ public class WebhookAuditService {
         event.setRejectionReason(reason);
         webhookEventRepository.save(event);
     }
+
+    public void setProcessing(String payloadHash) {
+        webhookEventRepository.findByPayloadHash(payloadHash).ifPresent(event -> {
+            event.setStatus(WebhookStatus.PROCESSING);
+            event.setDispatchedAt(Instant.now());
+            webhookEventRepository.save(event);
+        });
+    }
+
+    public void recordFailed(String payloadHash, String errorMessage) {
+        webhookEventRepository.findByPayloadHash(payloadHash).ifPresent(event -> {
+            event.setStatus(WebhookStatus.FAILED);
+            event.setErrorMessage(errorMessage);
+            webhookEventRepository.save(event);
+        });
+    }
 }

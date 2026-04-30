@@ -23,15 +23,15 @@ class SecretExposureAuditTest {
     void sourceTreesShouldNotContainHardcodedSecrets() throws IOException {
         List<String> findings = new ArrayList<>();
 
-        scanTree(Path.of("src", "main"), findings);
-        scanTree(Path.of("..", "frontend", "src"), findings);
+        scanTree(Path.of("src", "main"), findings, false);
+        scanTree(Path.of("..", "frontend", "src"), findings, true);
 
         assertThat(findings)
             .as("Hardcoded secrets must not appear in tracked backend/frontend source files")
             .isEmpty();
     }
 
-    private void scanTree(Path root, List<String> findings) throws IOException {
+    private void scanTree(Path root, List<String> findings, boolean isFrontend) throws IOException {
         if (!Files.exists(root)) {
             return;
         }
@@ -45,7 +45,7 @@ class SecretExposureAuditTest {
                 List<String> lines = Files.readAllLines(file);
                 for (int index = 0; index < lines.size(); index++) {
                     String line = lines.get(index).trim();
-                    if (isHardcodedSecret(line)) {
+                    if (isHardcodedSecret(line, isFrontend)) {
                         findings.add(file.normalize() + ":" + (index + 1) + " -> " + line);
                     }
                 }
@@ -60,13 +60,27 @@ class SecretExposureAuditTest {
             || name.endsWith(".yaml") || name.endsWith(".properties");
     }
 
-    private boolean isHardcodedSecret(String line) {
+    private boolean isHardcodedSecret(String line, boolean isFrontend) {
         if (line.isBlank() || line.startsWith("//") || line.startsWith("/*") || line.startsWith("*")
                 || line.startsWith("#") || line.startsWith("@")) {
             return false;
         }
         if (line.contains("${") || line.contains("Bearer ${") || line.contains("Authorization")) {
             return false;
+        }
+        if (isFrontend) {
+            // HTML/JSX input attributes: type="password", type='text', etc. are not secret values
+            if (line.matches(".*\\btype\\s*=\\s*[\"']\\w+[\"'].*")) {
+                return false;
+            }
+            // Generic type annotations and interface fields: e.g. token: string, password: string
+            if (line.matches(".*\\b(token|password|secret)\\s*[?:]\\s*string.*")) {
+                return false;
+            }
+            // TypeScript generic type params: ApiResponse<TokenResponse>, Promise<TokenResponse>, etc.
+            if (line.matches(".*<[A-Za-z]*(?i)(Token|Secret|Password)[A-Za-z]*>.*")) {
+                return false;
+            }
         }
 
         String normalized = line.toLowerCase(Locale.ROOT).replace("-", "_");

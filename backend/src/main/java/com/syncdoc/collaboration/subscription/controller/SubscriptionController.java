@@ -1,6 +1,7 @@
 package com.syncdoc.collaboration.subscription.controller;
 
 import com.syncdoc.collaboration.common.dto.ApiResponse;
+import com.syncdoc.collaboration.subscription.dto.UpsertSubscriptionRequest;
 import com.syncdoc.collaboration.subscription.model.UserSubscription;
 import com.syncdoc.collaboration.subscription.service.SubscriptionService;
 import com.syncdoc.collaboration.subscription.service.SyncAuthorizationService;
@@ -66,6 +67,14 @@ public class SubscriptionController {
         );
 
         return ResponseEntity.ok(ApiResponse.success("Sync authorization evaluated", response));
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<String>> upsertSubscription(
+        @Valid @RequestBody UpsertSubscriptionRequest request
+    ) {
+        subscriptionService.upsertSubscription(request);
+        return ResponseEntity.ok(ApiResponse.success("Subscription upserted", request.userId()));
     }
 
     public static class CanSyncRequest {

@@ -26,7 +26,12 @@ class SyncAuthorizationServiceTest {
     void setUp() {
         repository = mock(UserSubscriptionRepository.class);
         StripeClient stripeClient = mock(StripeClient.class);
-        subscriptionService = new SubscriptionService(repository, stripeClient);
+        org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate =
+            mock(org.springframework.data.redis.core.RedisTemplate.class);
+        org.springframework.data.redis.core.ValueOperations<String, Object> valueOps =
+            mock(org.springframework.data.redis.core.ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        subscriptionService = new SubscriptionService(repository, stripeClient, redisTemplate);
         syncAuthorizationService = new SyncAuthorizationService(subscriptionService);
     }
 

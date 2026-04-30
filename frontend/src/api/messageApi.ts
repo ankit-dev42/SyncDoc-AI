@@ -1,25 +1,7 @@
-import axios from 'axios';
+import apiClient from './client';
 import { Message, SendMessageRequest, EditMessageRequest, MessageSearchParams } from '../types/message';
-import { attachWorkspaceContextHeaders } from './contextHeaders';
-
-const API_BASE_URL = 'http://localhost:8080/api/v1';
 
 class MessageApiClient {
-  private client = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  constructor() {
-    this.client.interceptors.request.use((config) => attachWorkspaceContextHeaders(config));
-  }
-
-  // Set auth token
-  setAuthToken(token: string) {
-    this.client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  }
 
   // Send a message
   async sendMessage(
@@ -27,8 +9,8 @@ class MessageApiClient {
     channelId: string,
     request: SendMessageRequest
   ): Promise<Message> {
-    const response = await this.client.post(
-      `/workspaces/${workspaceId}/channels/${channelId}/messages`,
+    const response = await apiClient.post(
+      `/v1/workspaces/${workspaceId}/channels/${channelId}/messages`,
       request
     );
     return response.data.data;
@@ -49,8 +31,8 @@ class MessageApiClient {
     first: boolean;
     last: boolean;
   }> {
-    const response = await this.client.get(
-      `/workspaces/${workspaceId}/channels/${channelId}/messages`,
+    const response = await apiClient.get(
+      `/v1/workspaces/${workspaceId}/channels/${channelId}/messages`,
       { params: { page, size } }
     );
     return response.data.data;
@@ -62,8 +44,8 @@ class MessageApiClient {
     channelId: string,
     sequenceNumber: number
   ): Promise<Message[]> {
-    const response = await this.client.get(
-      `/workspaces/${workspaceId}/channels/${channelId}/messages/after/${sequenceNumber}`
+    const response = await apiClient.get(
+      `/v1/workspaces/${workspaceId}/channels/${channelId}/messages/after/${sequenceNumber}`
     );
     return response.data.data;
   }
@@ -81,8 +63,8 @@ class MessageApiClient {
     size: number;
     number: number;
   }> {
-    const response = await this.client.get(
-      `/workspaces/${workspaceId}/channels/${channelId}/messages/before/${sequenceNumber}`,
+    const response = await apiClient.get(
+      `/v1/workspaces/${workspaceId}/channels/${channelId}/messages/before/${sequenceNumber}`,
       { params: { limit } }
     );
     return response.data.data;
@@ -95,8 +77,8 @@ class MessageApiClient {
     messageId: string,
     request: EditMessageRequest
   ): Promise<Message> {
-    const response = await this.client.put(
-      `/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}`,
+    const response = await apiClient.put(
+      `/v1/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}`,
       request
     );
     return response.data.data;
@@ -109,8 +91,8 @@ class MessageApiClient {
     messageId: string,
     deleterId: string
   ): Promise<void> {
-    await this.client.delete(
-      `/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}`,
+    await apiClient.delete(
+      `/v1/workspaces/${workspaceId}/channels/${channelId}/messages/${messageId}`,
       { params: { deleterId } }
     );
   }
@@ -125,8 +107,8 @@ class MessageApiClient {
     size: number;
     number: number;
   }> {
-    const response = await this.client.get(
-      `/workspaces/${params.workspaceId}/channels/${params.channelId}/messages/search`,
+    const response = await apiClient.get(
+      `/v1/workspaces/${params.workspaceId}/channels/${params.channelId}/messages/search`,
       {
         params: {
           query: params.query,
@@ -144,16 +126,16 @@ class MessageApiClient {
     channelId: string,
     parentMessageId: string
   ): Promise<Message[]> {
-    const response = await this.client.get(
-      `/workspaces/${workspaceId}/channels/${channelId}/messages/thread/${parentMessageId}`
+    const response = await apiClient.get(
+      `/v1/workspaces/${workspaceId}/channels/${channelId}/messages/thread/${parentMessageId}`
     );
     return response.data.data;
   }
 
   // Get message count
   async getMessageCount(workspaceId: string, channelId: string): Promise<number> {
-    const response = await this.client.get(
-      `/workspaces/${workspaceId}/channels/${channelId}/messages/count`
+    const response = await apiClient.get(
+      `/v1/workspaces/${workspaceId}/channels/${channelId}/messages/count`
     );
     return response.data.data;
   }

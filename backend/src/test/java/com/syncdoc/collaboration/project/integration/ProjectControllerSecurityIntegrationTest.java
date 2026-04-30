@@ -5,6 +5,7 @@ import com.syncdoc.collaboration.exception.GlobalExceptionHandler;
 import com.syncdoc.collaboration.exception.ResourceNotFoundException;
 import com.syncdoc.collaboration.project.controller.ProjectController;
 import com.syncdoc.collaboration.project.model.Project;
+import com.syncdoc.collaboration.project.repository.ProjectRepository;
 import com.syncdoc.collaboration.project.security.ProjectAccessService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,17 +23,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.UUID;
+
 @ExtendWith(MockitoExtension.class)
 class ProjectControllerSecurityIntegrationTest {
 
     @Mock
     private ProjectAccessService projectAccessService;
 
+    @Mock
+    private ProjectRepository projectRepository;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        ProjectController controller = new ProjectController(projectAccessService);
+        ProjectController controller = new ProjectController(projectAccessService, projectRepository);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
@@ -42,7 +48,7 @@ class ProjectControllerSecurityIntegrationTest {
     void ownerShouldGet200() throws Exception {
         Project project = new Project();
         project.setId("project-1");
-        project.setOwnerId("owner-1");
+        project.setOwnerId(UUID.randomUUID());
         project.setName("Owner Project");
 
         when(projectAccessService.getOwnedProject("owner-1", "project-1"))

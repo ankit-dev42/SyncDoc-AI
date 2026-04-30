@@ -1,6 +1,12 @@
 spring:
   config:
     import: optional:file:env/.env.test.properties
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:test-placeholder}
+      chat:
+        options:
+          model: gpt-4o-mini
 
 management:
   health:

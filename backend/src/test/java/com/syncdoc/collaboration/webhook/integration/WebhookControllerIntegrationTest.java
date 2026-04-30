@@ -4,6 +4,7 @@ import com.syncdoc.collaboration.config.BusinessValidationProperties;
 import com.syncdoc.collaboration.exception.GlobalExceptionHandler;
 import com.syncdoc.collaboration.webhook.controller.WebhookController;
 import com.syncdoc.collaboration.webhook.security.GitHubWebhookSignatureVerifier;
+import com.syncdoc.collaboration.webhook.repository.WebhookEventRepository;
 import com.syncdoc.collaboration.webhook.service.WebhookAuditService;
 import com.syncdoc.collaboration.webhook.service.WebhookEventDispatcher;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,9 @@ class WebhookControllerIntegrationTest {
     @Mock
     private WebhookAuditService webhookAuditService;
 
+    @Mock
+    private WebhookEventRepository webhookEventRepository;
+
     private BusinessValidationProperties businessValidationProperties;
 
     private MockMvc mockMvc;
@@ -48,7 +52,8 @@ class WebhookControllerIntegrationTest {
             signatureVerifier,
             webhookEventDispatcher,
             webhookAuditService,
-            businessValidationProperties
+            businessValidationProperties,
+            webhookEventRepository
         );
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new GlobalExceptionHandler())

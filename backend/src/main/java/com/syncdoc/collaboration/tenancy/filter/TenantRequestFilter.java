@@ -22,7 +22,8 @@ public class TenantRequestFilter extends OncePerRequestFilter {
             || path.startsWith("/actuator/")
             || path.startsWith("/api/v1/webhooks/")
             || path.startsWith("/api/v1/billing/")
-            || path.startsWith("/ws/");
+            || path.startsWith("/ws/")
+            || path.equals("/error");
     }
 
     @Override
@@ -31,10 +32,9 @@ public class TenantRequestFilter extends OncePerRequestFilter {
         String tenantId = request.getHeader(TENANT_HEADER);
         if (tenantId != null && !tenantId.trim().isEmpty()) {
             currentTenant.set(tenantId);
-        } else {
-            // For MVP, assume default or throw error
-            throw new IllegalArgumentException("Missing workspace ID");
         }
+        // If no workspace header, proceed without setting tenant context
+        // (workspace-scoped endpoints enforce the header themselves via WorkspaceMembershipFilter)
         try {
             filterChain.doFilter(request, response);
         } finally {

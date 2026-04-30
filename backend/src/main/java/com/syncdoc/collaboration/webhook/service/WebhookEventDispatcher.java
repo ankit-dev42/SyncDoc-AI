@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syncdoc.collaboration.exception.BusinessValidationException;
 import com.syncdoc.collaboration.webhook.dto.GithubEventPayload;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -14,29 +16,40 @@ import java.time.Instant;
 @Service
 public class WebhookEventDispatcher {
 
+    private static final Logger log = LoggerFactory.getLogger(WebhookEventDispatcher.class);
+
     private final ObjectMapper objectMapper;
     private final GithubEventSchemaValidator schemaValidator;
     private final ApplicationEventPublisher eventPublisher;
+    private final WebhookAuditService webhookAuditService;
 
     public WebhookEventDispatcher(
         ObjectMapper objectMapper,
         GithubEventSchemaValidator schemaValidator,
-        ApplicationEventPublisher eventPublisher
+        ApplicationEventPublisher eventPublisher,
+        WebhookAuditService webhookAuditService
     ) {
         this.objectMapper = objectMapper;
         this.schemaValidator = schemaValidator;
         this.eventPublisher = eventPublisher;
+        this.webhookAuditService = webhookAuditService;
     }
 
     @Async
     public void dispatch(String deliveryId, String eventType, String payloadHash, String payload) {
-        GithubEventPayload eventPayload = toEventPayload(deliveryId, eventType, payloadHash, payload);
+        try {
+            GithubEventPayload eventPayload = toEventPayload(deliveryId, eventType, payloadHash, payload);
 
-        if (!schemaValidator.isValid(eventPayload)) {
-            throw new BusinessValidationException(400, "INVALID_WEBHOOK_SCHEMA", "Webhook payload schema validation failed");
+            if (!schemaValidator.isValid(eventPayload)) {
+                throw new BusinessValidationException(400, "INVALID_WEBHOOK_SCHEMA", "Webhook payload schema validation failed");
+            }
+
+            webhookAuditService.setProcessing(payloadHash);
+            eventPublisher.publishEvent(eventPayload);
+        } catch (Exception e) {
+            log.error("Webhook dispatch failed for deliveryId={}: {}", deliveryId, e.getMessage(), e);
+            webhookAuditService.recordFailed(payloadHash, e.getMessage());
         }
-
-        eventPublisher.publishEvent(eventPayload);
     }
 
     private GithubEventPayload toEventPayload(String deliveryId, String eventType, String payloadHash, String payload) {

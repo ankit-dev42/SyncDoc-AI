@@ -1,8 +1,4 @@
-import axios from 'axios';
-import { attachWorkspaceContextHeaders } from '../../../api/contextHeaders';
-
-const api = axios.create({ baseURL: 'http://localhost:8080/api/v1' });
-api.interceptors.request.use((config) => attachWorkspaceContextHeaders(config));
+import apiClient from '../../../api/client';
 
 export interface SearchFilters {
   from?: string;
@@ -23,7 +19,7 @@ export interface SearchResult {
 
 export const searchApi = {
   async search(workspaceId: string, query: string, channelId: string, filters: SearchFilters): Promise<SearchResult[]> {
-    const response = await api.get(`/workspaces/${workspaceId}/search`, {
+    const response = await apiClient.get(`/v1/workspaces/${workspaceId}/search`, {
       params: {
         query,
         channelId,
