@@ -3,4 +3,14 @@ spring:
     import: optional:file:env/.env.local.properties
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:local-placeholder}
+      chat:
+        options:
+          model: gpt-4o-mini
+
+logging:
+  level:
+    org.springframework.security: DEBUG

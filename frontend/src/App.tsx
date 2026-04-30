@@ -7,25 +7,23 @@ import { useWorkspaceStore } from './features/workspace/store/workspaceStore';
 import { PaymentSuccessBanner } from './features/billing/components/PaymentSuccessBanner';
 import { useUpgradeFlow } from './features/billing/hooks/useUpgradeFlow';
 import { useTranslation } from './i18n/useTranslation';
+import { useAuthStore } from './features/auth/store/authStore';
+import { LoginForm } from './features/auth/components/LoginForm';
+import { useSearch } from './features/search/hooks/useSearch';
+import { useThreads } from './features/messaging/hooks/useThreads';
 
 // Lazy-load heavy feature modules to reduce initial bundle size (T101)
-const WorkspaceList   = lazy(() => import('./features/workspace/components/WorkspaceList').then(m => ({ default: m.WorkspaceList })));
-const SearchBox       = lazy(() => import('./features/search/components/SearchBox').then(m => ({ default: m.SearchBox })));
-const SearchResults   = lazy(() => import('./features/search/components/SearchResults').then(m => ({ default: m.SearchResults })));
-const ThreadList      = lazy(() => import('./features/messaging/components/ThreadList').then(m => ({ default: m.ThreadList })));
-const Thread          = lazy(() => import('./features/messaging/components/Thread').then(m => ({ default: m.Thread })));
-
-// Hooks for non-lazy data stay regular imports
-import { useSearch }   from './features/search/hooks/useSearch';
-import { useThreads }  from './features/messaging/hooks/useThreads';
+const WorkspaceList = lazy(() => import('./features/workspace/components/WorkspaceList').then(m => ({ default: m.WorkspaceList })));
+const SearchBox     = lazy(() => import('./features/search/components/SearchBox').then(m => ({ default: m.SearchBox })));
+const SearchResults = lazy(() => import('./features/search/components/SearchResults').then(m => ({ default: m.SearchResults })));
+const ThreadList    = lazy(() => import('./features/messaging/components/ThreadList').then(m => ({ default: m.ThreadList })));
+const Thread        = lazy(() => import('./features/messaging/components/Thread').then(m => ({ default: m.Thread })));
 
 const DEFAULT_CHANNEL_ID = 'general';
 
-function App() {
-  // Render the post-payment success banner when Stripe redirects back to /success
-  if (window.location.pathname === '/success') {
-    return <PaymentSuccessBanner />;
-  }
+// All hooks live here — no conditional returns before hooks
+function Dashboard() {
+  const { logout } = useAuthStore();
 
   const {
     workspaces,
@@ -74,7 +72,15 @@ function App() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 text-slate-900">
       <header className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
-        <h1 className="text-2xl font-bold">SyncDoc Collaboration Platform</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">SyncDoc Collaboration Platform</h1>
+          <button
+            onClick={logout}
+            className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-600 hover:bg-slate-50"
+          >
+            Sign out
+          </button>
+        </div>
         <p className="mt-1 text-sm text-slate-600">
           Active workspace: <strong>{activeWorkspaceId}</strong> • User: <strong>{currentUserId}</strong>
         </p>
@@ -156,16 +162,41 @@ function App() {
             <div className="rounded-md border border-slate-200 bg-white p-3">
               <Suspense fallback={<SkeletonLoader rows={5} label="Loading thread…" />}>
                 <Thread
-                rootMessageId={activeThreadId ?? 'Select a thread'}
-                replies={activeReplies}
-                isLoading={loadingReplies}
-                error={threadError}
-              />              </Suspense>            </div>
+                  rootMessageId={activeThreadId ?? 'Select a thread'}
+                  replies={activeReplies}
+                  isLoading={loadingReplies}
+                  error={threadError}
+                />
+              </Suspense>
+            </div>
           </div>
         </section>
       </div>
     </div>
   );
+}
+
+function App() {
+  const { token, logout } = useAuthStore();
+
+  // Sync logout when another tab clears the token
+  useEffect(() => {
+    const handleStorage = () => {
+      if (!localStorage.getItem('accessToken')) logout();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [logout]);
+
+  if (window.location.pathname === '/success') {
+    return <PaymentSuccessBanner />;
+  }
+
+  if (!token) {
+    return <LoginForm />;
+  }
+
+  return <Dashboard />;
 }
 
 export default App;

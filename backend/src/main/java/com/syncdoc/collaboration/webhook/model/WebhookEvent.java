@@ -35,7 +35,7 @@ public class WebhookEvent {
     @Column(name = "payload_hash", nullable = false, length = 64)
     private String payloadHash;
 
-    @Column(name = "payload_snapshot", columnDefinition = "TEXT")
+    @Column(name = "payload_snapshot", columnDefinition = "jsonb")
     private String payloadSnapshot;
 
     @Enumerated(EnumType.STRING)
@@ -51,6 +51,9 @@ public class WebhookEvent {
 
     @Column(name = "dispatched_at")
     private Instant dispatchedAt;
+
+    @Column(name = "error_message")
+    private String errorMessage;
 
     public WebhookEvent() {
     }
@@ -119,6 +122,14 @@ public class WebhookEvent {
         this.dispatchedAt = dispatchedAt;
     }
 
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) {
@@ -132,6 +143,8 @@ public class WebhookEvent {
 
     public enum WebhookStatus {
         ACCEPTED,
-        REJECTED
+        REJECTED,
+        PROCESSING,
+        FAILED
     }
 }

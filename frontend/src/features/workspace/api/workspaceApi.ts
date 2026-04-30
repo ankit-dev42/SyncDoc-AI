@@ -1,8 +1,4 @@
-import axios from 'axios';
-import { attachWorkspaceContextHeaders } from '../../../api/contextHeaders';
-
-const api = axios.create({ baseURL: 'http://localhost:8080/api/v1' });
-api.interceptors.request.use((config) => attachWorkspaceContextHeaders(config));
+import apiClient from '../../../api/client';
 
 export interface WorkspaceSummary {
   id: string;
@@ -12,7 +8,7 @@ export interface WorkspaceSummary {
 
 export const workspaceApi = {
   async list(): Promise<WorkspaceSummary[]> {
-    const response = await api.get('/workspaces');
+    const response = await apiClient.get('/v1/workspaces');
     return response.data.data;
   },
 };

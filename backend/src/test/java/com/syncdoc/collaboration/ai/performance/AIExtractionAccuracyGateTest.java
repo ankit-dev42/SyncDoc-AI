@@ -1,5 +1,6 @@
 package com.syncdoc.collaboration.ai.performance;
 
+import com.syncdoc.collaboration.ai.model.GeneratedDocumentation;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -9,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -32,6 +34,15 @@ class AIExtractionAccuracyGateTest {
     private static final int REQUIRED_CASES = 20;
     private static final double MIN_AVERAGE_SCORE = 0.95;
     private static final Pattern FILE_NAME_PATTERN = Pattern.compile("File\\d+");
+
+    @Test
+    void processingStatusEnumShouldIncludeAllExpectedValues() {
+        List<String> names = Arrays.stream(GeneratedDocumentation.ProcessingStatus.values())
+            .map(Enum::name)
+            .toList();
+
+        assertThat(names).contains("PENDING", "PROCESSING", "COMPLETED", "FAILED");
+    }
 
     @Test
     void fixtureCorpusShouldContain20Cases() throws Exception {

@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
+import com.syncdoc.collaboration.webhook.repository.WebhookEventRepository;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
@@ -29,13 +31,14 @@ class WebhookDispatchPerformanceTest {
         String secret = "phase8-webhook-secret";
         GitHubWebhookSignatureVerifier signatureVerifier = new GitHubWebhookSignatureVerifier();
         ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
-        WebhookEventDispatcher dispatcher = new WebhookEventDispatcher(new ObjectMapper(), new GithubEventSchemaValidator(), publisher);
         WebhookAuditService auditService = mock(WebhookAuditService.class);
+        WebhookEventRepository eventRepository = mock(WebhookEventRepository.class);
+        WebhookEventDispatcher dispatcher = new WebhookEventDispatcher(new ObjectMapper(), new GithubEventSchemaValidator(), publisher, auditService);
 
         BusinessValidationProperties properties = new BusinessValidationProperties();
         properties.getGithub().setWebhookSecret(secret);
 
-        WebhookController controller = new WebhookController(signatureVerifier, dispatcher, auditService, properties);
+        WebhookController controller = new WebhookController(signatureVerifier, dispatcher, auditService, properties, eventRepository);
         List<Long> latencies = new ArrayList<>();
         int samples = 100;
 

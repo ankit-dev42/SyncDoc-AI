@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -60,7 +61,8 @@ public class WebSecurityConfig {
                     "/api/v1/billing/stripe-webhook",
                     "/actuator/health",
                     "/actuator/info",
-                    "/ws/**"
+                    "/ws/**",
+                    "/error"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
@@ -105,5 +107,32 @@ public class WebSecurityConfig {
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * Prevent @Component filters from being auto-registered as servlet filters by Spring Boot.
+     * They are already registered in the correct position via the Spring Security filter chain.
+     * Without this, OncePerRequestFilter runs before Spring Security (as a servlet filter),
+     * then gets skipped inside the Security chain, so the SecurityContext is never populated.
+     */
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(RateLimitFilter filter) {
+        FilterRegistrationBean<RateLimitFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<WorkspaceMembershipFilter> workspaceMembershipFilterRegistration(WorkspaceMembershipFilter filter) {
+        FilterRegistrationBean<WorkspaceMembershipFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
     }
 }

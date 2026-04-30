@@ -3,6 +3,7 @@ package com.syncdoc.collaboration.project.security;
 import com.syncdoc.collaboration.exception.BusinessValidationException;
 import com.syncdoc.collaboration.exception.GlobalExceptionHandler;
 import com.syncdoc.collaboration.project.controller.ProjectController;
+import com.syncdoc.collaboration.project.repository.ProjectRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -37,11 +38,14 @@ class MultiTenantSecurityAuditTest {
     @Mock
     private ProjectAccessService projectAccessService;
 
+    @Mock
+    private ProjectRepository projectRepository;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        ProjectController controller = new ProjectController(projectAccessService);
+        ProjectController controller = new ProjectController(projectAccessService, projectRepository);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
