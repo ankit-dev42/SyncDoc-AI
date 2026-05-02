@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Read VITE_* variables from the repo root .env (single env file for whole project)
+  envDir: '..',
   test: {
     environment: 'jsdom',
     globals: true,

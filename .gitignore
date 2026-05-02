@@ -29,7 +29,6 @@ frontend/tests/test-results/screenshots/*
 frontend/tests/integration/fixtures/.test-users.json
 
 # E2E setup script outputs and credentials (never commit)
-scripts/.env
 scripts/.free-user.json
 scripts/.master-player.json
 

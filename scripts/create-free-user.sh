@@ -18,16 +18,17 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RESULT_FILE="$SCRIPT_DIR/.free-user.json"
-ENV_FILE="$SCRIPT_DIR/.env"
+ENV_FILE="$REPO_ROOT/.env"
 
-# ── Load credentials from .env (never hardcoded) ─────────────────────────────
+# ── Load credentials from root .env (never hardcoded) ─────────────────────────
 if [[ -f "$ENV_FILE" ]]; then
   # shellcheck source=/dev/null
   set -o allexport && source "$ENV_FILE" && set +o allexport
 else
   echo "[WARN]  $ENV_FILE not found — using defaults from .env.example"
-  echo "        Copy scripts/.env.example to scripts/.env and set your values."
+  echo "        Copy .env.example to .env and set your values."
 fi
 
 # ── Config ────────────────────────────────────────────────────────────────────
