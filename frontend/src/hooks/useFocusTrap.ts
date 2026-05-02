@@ -62,6 +62,5 @@ export function useRestoreFocus(targetRef: React.RefObject<HTMLElement | null>) 
     return () => {
       el?.focus();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

@@ -4,11 +4,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syncdoc.collaboration.security.JwtTestTokenHelper;
 import com.syncdoc.collaboration.subscription.controller.SubscriptionController;
+import com.syncdoc.collaboration.subscription.model.UserSubscription;
+import com.syncdoc.collaboration.subscription.model.UserSubscription.SubscriptionStatus;
+import com.syncdoc.collaboration.subscription.model.UserSubscription.SubscriptionTier;
+import com.syncdoc.collaboration.subscription.service.SubscriptionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,6 +39,7 @@ class SubscriptionControllerDtoTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
+    @MockBean SubscriptionService subscriptionService;
 
     @Test
     @DisplayName("SubscriptionTierResponse record has exactly {tier, status, expiresAt} — no stripeCustomerId, no userId")
@@ -62,6 +69,12 @@ class SubscriptionControllerDtoTest {
     void getTier_responseDoesNotLeakStripeCustomerId() throws Exception {
         String userId = UUID.randomUUID().toString();
         String token = JwtTestTokenHelper.signedToken(userId);
+
+        UserSubscription stubSub = new UserSubscription();
+        stubSub.setTier(SubscriptionTier.FREE);
+        stubSub.setStatus(SubscriptionStatus.ACTIVE);
+        stubSub.setStripeCustomerId("cus_test_stub");
+        Mockito.when(subscriptionService.getSubscription(userId)).thenReturn(stubSub);
 
         String responseBody = mockMvc.perform(
                 get("/api/v1/subscriptions/{userId}/tier", userId)
