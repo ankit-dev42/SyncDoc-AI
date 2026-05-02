@@ -1,41 +1,30 @@
-import { useCallback, useMemo, useState } from 'react';
-import { SearchFilters, SearchResult, searchApi } from '../api/searchApi';
-import { toWorkspaceAccessError } from '../../workspace/utils/workspaceAccessError';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { SearchResult, searchApi } from '../api/searchApi';
+import { useDebounce } from '../../../utils/useDebounce';
 
-export function useSearch(workspaceId: string, defaultChannelId: string) {
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function useSearch(workspaceId: string, channelId: string, query: string) {
+  const debouncedQuery = useDebounce(query, 300);
 
-  const runSearch = useCallback(async (query: string, filters: SearchFilters) => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
+  const result = useQuery<SearchResult[]>({
+    queryKey: ['search', workspaceId, channelId, debouncedQuery],
+    queryFn: () => searchApi.search(workspaceId, debouncedQuery, channelId, {}),
+    enabled: debouncedQuery.length >= 2,
+    staleTime: 30_000,
+  });
 
-    setLoading(true);
-    setError(null);
-    try {
-      const channelId = filters.in || defaultChannelId;
-      const data = await searchApi.search(workspaceId, query, channelId, filters);
-      setResults(data);
-    } catch (err) {
-      setError(toWorkspaceAccessError(err, 'Search request failed'));
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId, defaultChannelId]);
+  // Keep a thin imperative escape-hatch for components that use programmatic search
+  const runSearch = useCallback(
+    async (q: string, filters: { in?: string } = {}) => {
+      const targetChannel = filters.in ?? channelId;
+      await searchApi.search(workspaceId, q, targetChannel, filters);
+    },
+    [workspaceId, channelId],
+  );
 
-  const navigateToResult = useCallback((result: SearchResult) => {
-    window.location.hash = `#workspace=${result.workspaceId}&channel=${result.channelId}&seq=${result.sequenceNumber}`;
+  const navigateToResult = useCallback((r: SearchResult) => {
+    window.location.hash = `#workspace=${r.workspaceId}&channel=${r.channelId}&seq=${r.sequenceNumber}`;
   }, []);
 
-  return useMemo(() => ({
-    results,
-    loading,
-    error,
-    runSearch,
-    navigateToResult,
-  }), [results, loading, error, runSearch, navigateToResult]);
+  return { ...result, runSearch, navigateToResult };
 }

@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  backend:
+    name: Backend — Test & Coverage
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: syncdoc_test
+          POSTGRES_USER: syncdoc
+          POSTGRES_PASSWORD: syncdoc_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Run tests and check coverage
+        working-directory: backend
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/syncdoc_test
+          SPRING_DATASOURCE_USERNAME: syncdoc
+          SPRING_DATASOURCE_PASSWORD: syncdoc_password
+          SPRING_REDIS_HOST: localhost
+          SPRING_REDIS_PORT: 6379
+          JWT_SECRET: ci-test-secret-at-least-32-chars-long
+          GITHUB_WEBHOOK_SECRET: ci-test-webhook-secret
+          STRIPE_API_KEY: sk_test_ci_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+          OPENAI_API_KEY: sk-ci-placeholder
+          FRONTEND_ORIGIN: http://localhost:5173
+        run: mvn verify -Pci --no-transfer-progress
+      - name: Upload JaCoCo report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-report
+          path: backend/target/site/jacoco/
+
+  frontend:
+    name: Frontend — Lint, Test & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test with coverage
+        run: npm run test:coverage
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: E2E — Playwright
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps
+      - name: Start services
+        run: docker-compose up -d
+        env:
+          POSTGRES_URL: postgresql://syncdoc:syncdoc_password@localhost:5432/syncdoc
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FRONTEND_ORIGIN: http://localhost:5173
+      - name: Wait for services
+        run: sleep 15
+      - name: Run Playwright E2E tests
+        working-directory: frontend
+        env:
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FRONTEND_ORIGIN: ${{ secrets.FRONTEND_ORIGIN }}
+        run: npm run test:e2e
+      - name: Stop services
+        if: always()
+        run: docker-compose down

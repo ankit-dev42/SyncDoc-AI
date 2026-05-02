@@ -55,6 +55,10 @@ class SecretExposureAuditTest {
 
     private boolean isScannable(Path file) {
         String name = file.toString();
+        // Test/spec files intentionally contain synthetic fixture tokens — exclude from scan
+        if (name.contains(".test.") || name.contains(".spec.")) {
+            return false;
+        }
         return name.endsWith(".java") || name.endsWith(".ts") || name.endsWith(".tsx")
             || name.endsWith(".js") || name.endsWith(".jsx") || name.endsWith(".yml")
             || name.endsWith(".yaml") || name.endsWith(".properties");
@@ -65,7 +69,7 @@ class SecretExposureAuditTest {
                 || line.startsWith("#") || line.startsWith("@")) {
             return false;
         }
-        if (line.contains("${") || line.contains("Bearer ${") || line.contains("Authorization")) {
+        if (line.contains("Bearer ${") || line.contains("Authorization")) {
             return false;
         }
         if (isFrontend) {
@@ -81,6 +85,18 @@ class SecretExposureAuditTest {
             if (line.matches(".*<[A-Za-z]*(?i)(Token|Secret|Password)[A-Za-z]*>.*")) {
                 return false;
             }
+            // id/htmlFor attribute values are HTML field identifiers, not secret values
+            if (line.matches(".*\\b(id|htmlFor)\\s*=\\s*[\"']\\w+[\"'].*")) {
+                return false;
+            }
+            // autoComplete attribute values are HTML5 spec-defined strings (e.g. "current-password")
+            if (line.matches(".*\\bautoComplete\\s*=.*")) {
+                return false;
+            }
+            // React Hook Form register('fieldName', ...) — first arg is a schema key, not a secret
+            if (line.matches(".*\\bregister\\(\\s*[\"']\\w+[\"'].*")) {
+                return false;
+            }
         }
 
         String normalized = line.toLowerCase(Locale.ROOT).replace("-", "_");
@@ -89,18 +105,37 @@ class SecretExposureAuditTest {
         }
 
         Matcher matcher = QUOTED_LITERAL.matcher(line);
-        if (!matcher.find()) {
-            return false;
-        }
+        while (matcher.find()) {
+            String literal = matcher.group(1);
 
-        String literal = matcher.group(1);
-        return !literal.equalsIgnoreCase("sha256")
-            && !literal.equalsIgnoreCase("hmacsha256")
-            && !literal.startsWith("http")
-            && !literal.contains("Content-Type")
-            && !literal.contains("application/json")
-            && !literal.contains(" ")                              // error messages have spaces; secrets don't
-            && !literal.matches("[A-Z][A-Z_0-9]*")                // ALL_CAPS error codes (e.g. TOKEN_EXPIRED)
-            && !literal.matches("[a-z]+[A-Z][a-zA-Z0-9]*");      // camelCase identifiers (e.g. refreshToken)
+            // Skip env-var expression references like ${STRIPE_API_KEY} — not a hardcoded value
+            int matchStart = matcher.start(1);
+            int matchEnd   = matcher.end(1);
+            boolean isEnvVarRef = matchStart >= 2
+                    && line.charAt(matchStart - 2) == '$'
+                    && line.charAt(matchStart - 1) == '{'
+                    && matchEnd < line.length()
+                    && line.charAt(matchEnd) == '}';
+            if (isEnvVarRef) {
+                continue;
+            }
+
+            // Skip URL/API path strings — not secrets
+            if (literal.startsWith("/")) {
+                continue;
+            }
+
+            if (!literal.equalsIgnoreCase("sha256")
+                    && !literal.equalsIgnoreCase("hmacsha256")
+                    && !literal.startsWith("http")
+                    && !literal.contains("Content-Type")
+                    && !literal.contains("application/json")
+                    && !literal.contains(" ")                              // error messages have spaces; secrets don't
+                    && !literal.matches("[A-Z][A-Z_0-9]*")                // ALL_CAPS error codes (e.g. TOKEN_EXPIRED)
+                    && !literal.matches("[a-z]+[A-Z][a-zA-Z0-9]*")) {    // camelCase identifiers (e.g. refreshToken)
+                return true;
+            }
+        }
+        return false;
     }
 }

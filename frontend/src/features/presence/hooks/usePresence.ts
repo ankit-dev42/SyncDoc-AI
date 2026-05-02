@@ -1,43 +1,34 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { presenceApi, PresenceRecord } from '../api/presenceApi';
 import { PresenceStatus } from '../components/PresenceBadge';
-import { toWorkspaceAccessError } from '../../workspace/utils/workspaceAccessError';
 
 export function usePresence(workspaceId: string, currentUserId: string) {
-  const [users, setUsers] = useState<PresenceRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const result = useQuery<PresenceRecord[]>({
+    queryKey: ['presence', workspaceId],
+    queryFn: () => presenceApi.list(workspaceId),
+    enabled: Boolean(workspaceId && currentUserId),
+    staleTime: 30_000,
+  });
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await presenceApi.list(workspaceId);
-      setUsers(data);
-    } catch (err) {
-      setError(toWorkspaceAccessError(err, 'Failed to load presence state'));
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId]);
+  const setStatus = useCallback(
+    async (status: PresenceStatus) => {
+      await presenceApi.setStatus(workspaceId, currentUserId, status);
+      await result.refetch();
+    },
+    [workspaceId, currentUserId, result],
+  );
 
-  const setStatus = useCallback(async (status: PresenceStatus) => {
-    await presenceApi.setStatus(workspaceId, currentUserId, status);
-    await refresh();
-  }, [workspaceId, currentUserId, refresh]);
-
+  // Heartbeat runs outside React Query — fire-and-forget, no state
   useEffect(() => {
-    if (!workspaceId || !currentUserId) {
-      return;
-    }
-    void refresh();
+    if (!workspaceId || !currentUserId) return;
 
     const id = window.setInterval(() => {
       void presenceApi.heartbeat(workspaceId, currentUserId);
-    }, 30000);
+    }, 30_000);
 
     return () => window.clearInterval(id);
-  }, [workspaceId, currentUserId, refresh]);
+  }, [workspaceId, currentUserId]);
 
-  return useMemo(() => ({ users, loading, error, refresh, setStatus }), [users, loading, error, refresh, setStatus]);
+  return { ...result, setStatus };
 }

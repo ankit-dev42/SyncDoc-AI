@@ -4,11 +4,7 @@ import { SkeletonLoader } from './components/SkeletonLoader';
 import { PresenceBadge } from './features/presence/components/PresenceBadge';
 import { usePresence } from './features/presence/hooks/usePresence';
 import { useWorkspaceStore } from './features/workspace/store/workspaceStore';
-import { PaymentSuccessBanner } from './features/billing/components/PaymentSuccessBanner';
-import { useUpgradeFlow } from './features/billing/hooks/useUpgradeFlow';
-import { useTranslation } from './i18n/useTranslation';
 import { useAuthStore } from './features/auth/store/authStore';
-import { LoginForm } from './features/auth/components/LoginForm';
 import { useSearch } from './features/search/hooks/useSearch';
 import { useThreads } from './features/messaging/hooks/useThreads';
 
@@ -22,8 +18,8 @@ const Thread        = lazy(() => import('./features/messaging/components/Thread'
 const DEFAULT_CHANNEL_ID = 'general';
 
 // All hooks live here — no conditional returns before hooks
-function Dashboard() {
-  const { logout } = useAuthStore();
+export function Dashboard() {
+  const { clearTokens } = useAuthStore();
 
   const {
     workspaces,
@@ -35,35 +31,22 @@ function Dashboard() {
     switchWorkspace,
   } = useWorkspaceStore();
 
-  const {
-    users,
-    loading: loadingPresence,
-    error: presenceError,
-    refresh: refreshPresence,
-  } = usePresence(activeWorkspaceId, currentUserId);
+  const presenceResult = usePresence(activeWorkspaceId, currentUserId);
+  const users = presenceResult.data ?? [];
+  const loadingPresence = presenceResult.isPending;
+  const presenceError = presenceResult.isError ? 'Failed to load presence state' : null;
 
-  const {
-    threads,
-    activeReplies,
-    activeThreadId,
-    loadingThreads,
-    loadingReplies,
-    error: threadError,
-    openThread,
-  } = useThreads(activeWorkspaceId, DEFAULT_CHANNEL_ID);
+  const threadResult = useThreads(activeWorkspaceId, DEFAULT_CHANNEL_ID);
+  const threads = threadResult.data ?? [];
+  const loadingThreads = threadResult.isPending;
+  const threadError = threadResult.isError ? 'Failed to load threads' : null;
 
-  const {
-    results,
-    loading: searching,
-    error: searchError,
-    runSearch,
-    navigateToResult,
-  } = useSearch(activeWorkspaceId, DEFAULT_CHANNEL_ID);
+  const searchResult = useSearch(activeWorkspaceId, DEFAULT_CHANNEL_ID, '');
+  const results = searchResult.data ?? [];
+  const searching = searchResult.isPending;
+  const searchError = searchResult.isError ? 'Failed to search' : null;
+  const { runSearch, navigateToResult } = searchResult;
 
-  const { status: upgradeStatus, error: upgradeError, startUpgrade } =
-    useUpgradeFlow(currentUserId);
-
-  const { t } = useTranslation();
 
   useEffect(() => {
     void initialize();
@@ -75,7 +58,7 @@ function Dashboard() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">SyncDoc Collaboration Platform</h1>
           <button
-            onClick={logout}
+            onClick={clearTokens}
             className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-600 hover:bg-slate-50"
           >
             Sign out
@@ -101,12 +84,6 @@ function Dashboard() {
           <div className="rounded-md border border-slate-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-700">Presence</h2>
-              <button
-                onClick={() => void refreshPresence()}
-                className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
-              >
-                Refresh
-              </button>
             </div>
             {loadingPresence ? <p className="text-sm text-slate-500">Loading presence...</p> : null}
             {presenceError ? <p className="text-sm text-red-700">{presenceError}</p> : null}
@@ -118,24 +95,6 @@ function Dashboard() {
                 </li>
               ))}
             </ul>
-          </div>
-
-          <div className="rounded-md border border-slate-200 bg-white p-3">
-            <div className="mb-2">
-              <h2 className="text-sm font-semibold text-slate-700">Subscription</h2>
-            </div>
-            <button
-              onClick={() => void startUpgrade()}
-              disabled={upgradeStatus === 'redirecting'}
-              className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-            >
-              {upgradeStatus === 'redirecting'
-                ? t('billing.upgradeRedirecting')
-                : t('billing.upgradeToPro')}
-            </button>
-            {upgradeError ? (
-              <p className="mt-2 text-xs text-red-600">{upgradeError}</p>
-            ) : null}
           </div>
         </section>
 
@@ -154,7 +113,7 @@ function Dashboard() {
             <div className="rounded-md border border-slate-200 bg-white p-3">
               <h2 className="mb-2 text-sm font-semibold text-slate-700">Threads</h2>
               <Suspense fallback={<SkeletonLoader rows={3} label="Loading threads…" />}>
-                <ThreadList threads={threads} isLoading={loadingThreads} onOpenThread={(id) => void openThread(id)} />
+                <ThreadList threads={threads} isLoading={loadingThreads} onOpenThread={() => {}} />
               </Suspense>
               {threadError ? <p className="mt-2 text-sm text-red-700">{threadError}</p> : null}
             </div>
@@ -162,10 +121,10 @@ function Dashboard() {
             <div className="rounded-md border border-slate-200 bg-white p-3">
               <Suspense fallback={<SkeletonLoader rows={5} label="Loading thread…" />}>
                 <Thread
-                  rootMessageId={activeThreadId ?? 'Select a thread'}
-                  replies={activeReplies}
-                  isLoading={loadingReplies}
-                  error={threadError}
+                  rootMessageId="Select a thread"
+                  replies={[]}
+                  isLoading={false}
+                  error={null}
                 />
               </Suspense>
             </div>
@@ -176,27 +135,6 @@ function Dashboard() {
   );
 }
 
-function App() {
-  const { token, logout } = useAuthStore();
-
-  // Sync logout when another tab clears the token
-  useEffect(() => {
-    const handleStorage = () => {
-      if (!localStorage.getItem('accessToken')) logout();
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [logout]);
-
-  if (window.location.pathname === '/success') {
-    return <PaymentSuccessBanner />;
-  }
-
-  if (!token) {
-    return <LoginForm />;
-  }
-
+export default function App() {
   return <Dashboard />;
 }
-
-export default App;

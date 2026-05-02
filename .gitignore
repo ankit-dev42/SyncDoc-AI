@@ -1,6 +1,7 @@
 # Root-level planning/internal docs (not for VCS)
 /*.md
 !README.md
+application-up.txt
 
 # Environment / secrets
 .env*
@@ -8,7 +9,6 @@
 *.properties
 !backend/src/main/resources/*.yml
 !backend/src/test/resources/*.yml
-
 # Java
 target/
 *.class
@@ -21,6 +21,15 @@ node_modules/
 dist/
 build/
 *.log
+
+# Playwright
+frontend/test-results/
+frontend/tests/test-results/screenshots/*
+frontend/tests/integration/fixtures/.test-users.json
+
+# E2E setup script outputs (contain user credentials, never commit)
+scripts/.free-user.json
+scripts/.master-player.json
 
 # PostgreSQL/MySQL
 # No specific patterns, but perhaps logs if any
