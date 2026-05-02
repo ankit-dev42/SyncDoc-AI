@@ -17,14 +17,24 @@
 
 set -euo pipefail
 
-# ── Config ────────────────────────────────────────────────────────────────────
-BASE_URL="${BASE_URL:-http://localhost:8080}"
-EMAIL="free_tester@syncdoc.dev"
-PASSWORD="FreeTester!2026"
-DISPLAY_NAME="Free Tester"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESULT_FILE="$SCRIPT_DIR/.free-user.json"
+ENV_FILE="$SCRIPT_DIR/.env"
+
+# ── Load credentials from .env (never hardcoded) ─────────────────────────────
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck source=/dev/null
+  set -o allexport && source "$ENV_FILE" && set +o allexport
+else
+  echo "[WARN]  $ENV_FILE not found — using defaults from .env.example"
+  echo "        Copy scripts/.env.example to scripts/.env and set your values."
+fi
+
+# ── Config ────────────────────────────────────────────────────────────────────
+BASE_URL="${E2E_BASE_URL:-http://localhost:8080}"
+EMAIL="${FREE_EMAIL:?'FREE_EMAIL not set — check scripts/.env'}"
+PASSWORD="${FREE_PASSWORD:?'FREE_PASSWORD not set — check scripts/.env'}"
+DISPLAY_NAME="${FREE_DISPLAY_NAME:-Free Tester}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 info()  { echo "[INFO]  $*"; }

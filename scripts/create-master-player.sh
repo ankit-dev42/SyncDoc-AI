@@ -12,16 +12,26 @@
 
 set -euo pipefail
 
-# ── Config ────────────────────────────────────────────────────────────────────
-BASE_URL="${BASE_URL:-http://localhost:8080}"
-EMAIL="master_player@syncdoc.dev"
-PASSWORD="MasterPlayer!2026"
-DISPLAY_NAME="Master Player"
-STRIPE_CUSTOMER_ID="cus_master_player"
-STRIPE_SUBSCRIPTION_ID="sub_master_player"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESULT_FILE="$SCRIPT_DIR/.master-player.json"
+ENV_FILE="$SCRIPT_DIR/.env"
+
+# ── Load credentials from .env (never hardcoded) ─────────────────────────────
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck source=/dev/null
+  set -o allexport && source "$ENV_FILE" && set +o allexport
+else
+  echo "[WARN]  $ENV_FILE not found — using defaults from .env.example"
+  echo "        Copy scripts/.env.example to scripts/.env and set your values."
+fi
+
+# ── Config ────────────────────────────────────────────────────────────────────
+BASE_URL="${E2E_BASE_URL:-http://localhost:8080}"
+EMAIL="${MASTER_EMAIL:?'MASTER_EMAIL not set — check scripts/.env'}"
+PASSWORD="${MASTER_PASSWORD:?'MASTER_PASSWORD not set — check scripts/.env'}"
+DISPLAY_NAME="${MASTER_DISPLAY_NAME:-Master Player}"
+STRIPE_CUSTOMER_ID="cus_master_player"
+STRIPE_SUBSCRIPTION_ID="sub_master_player"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 info()  { echo "[INFO]  $*"; }

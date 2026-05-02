@@ -6,6 +6,7 @@ application-up.txt
 # Environment / secrets
 .env*
 **/.env*
+!**/.env.example
 *.properties
 !backend/src/main/resources/*.yml
 !backend/src/test/resources/*.yml
@@ -27,7 +28,8 @@ frontend/test-results/
 frontend/tests/test-results/screenshots/*
 frontend/tests/integration/fixtures/.test-users.json
 
-# E2E setup script outputs (contain user credentials, never commit)
+# E2E setup script outputs and credentials (never commit)
+scripts/.env
 scripts/.free-user.json
 scripts/.master-player.json
 
