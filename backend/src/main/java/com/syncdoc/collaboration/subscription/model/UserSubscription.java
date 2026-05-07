@@ -1,6 +1,8 @@
 package com.syncdoc.collaboration.subscription.model;
 
+import com.syncdoc.collaboration.common.converter.UUIDStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -28,6 +30,7 @@ public class UserSubscription {
     @Column(name = "id", nullable = false, updatable = false)
     private String id;
 
+    @Convert(converter = UUIDStringConverter.class)
     @Column(name = "user_id", nullable = false, unique = true, columnDefinition = "UUID")
     private String userId;
 

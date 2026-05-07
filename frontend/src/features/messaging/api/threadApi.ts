@@ -27,4 +27,9 @@ export const threadApi = {
     const response = await apiClient.get(`/v1/workspaces/${workspaceId}/channels/${channelId}/messages/thread/${rootMessageId}`);
     return response.data.data;
   },
+
+  async createThread(workspaceId: string, channelId: string, message: string): Promise<ThreadSummary> {
+    const response = await apiClient.post(`/v1/workspaces/${workspaceId}/channels/${channelId}/messages/threads`, { message });
+    return response.data.data;
+  },
 };

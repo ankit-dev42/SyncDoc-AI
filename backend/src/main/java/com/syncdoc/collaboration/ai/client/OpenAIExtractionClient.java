@@ -1,6 +1,5 @@
 package com.syncdoc.collaboration.ai.client;
 
-import com.syncdoc.collaboration.ai.model.GeneratedDocumentation;
 import com.syncdoc.collaboration.ai.service.AIProcessingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

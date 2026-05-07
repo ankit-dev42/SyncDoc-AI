@@ -1,4 +1,5 @@
 import apiClient from '../../../api/client';
+import type { AuthUser } from '../store/authStore';
 
 export interface LoginRequest {
   email: string;
@@ -17,14 +18,15 @@ interface ApiResponse<T> {
   data: T;
 }
 
-interface TokenResponse {
+interface LoginResponse {
   accessToken: string;
+  user: AuthUser;
 }
 
 export const authApi = {
-  login: async (req: LoginRequest): Promise<string> => {
-    const res = await apiClient.post<ApiResponse<TokenResponse>>('/auth/login', req);
-    return res.data.data.accessToken;
+  login: async (req: LoginRequest): Promise<LoginResponse> => {
+    const res = await apiClient.post<ApiResponse<LoginResponse>>('/auth/login', req);
+    return res.data.data;
   },
 
   register: async (req: RegisterRequest): Promise<void> => {

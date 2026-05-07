@@ -57,7 +57,9 @@ public class AuditLogger {
 
     /** Strip newlines and control characters to prevent log injection. */
     private static String sanitize(String input) {
-        if (input == null) return "-";
+        if (input == null) {
+            return "-";
+        }
         return input.replaceAll("[\r\n\t]", " ").strip();
     }
 }

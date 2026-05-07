@@ -6,7 +6,6 @@ import com.syncdoc.collaboration.auth.dto.TokenResponse;
 import com.syncdoc.collaboration.auth.dto.UserResponse;
 import com.syncdoc.collaboration.auth.service.AuthService;
 import com.syncdoc.collaboration.common.dto.ApiResponse;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;

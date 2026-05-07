@@ -62,6 +62,11 @@
     "upgradeSuccess": "Upgrade complete! You now have Pro access.",
     "upgradeRedirecting": "Redirecting to secure checkout…",
     "paymentSuccessTitle": "Payment successful",
-    "paymentSuccessBody": "Your subscription has been updated successfully."
+    "paymentSuccessBody": "Your subscription has been updated successfully.",
+    "upgrade.error": "Upgrade failed. Please try again."
+  },
+  "auth": {
+    "login.error": "Login failed. Please check your credentials and try again.",
+    "register.error": "Registration failed. Please try again."
   }
 }

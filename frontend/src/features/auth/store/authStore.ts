@@ -1,32 +1,34 @@
 import { create } from 'zustand';
-import { authApi } from '../api/authApi';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
-interface AuthState {
-  token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName?: string) => Promise<void>;
-  logout: () => void;
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName: string;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  token: localStorage.getItem('accessToken'),
+interface AuthState {
+  accessToken: string | null;
+  user: AuthUser | null;
+  setTokens: (accessToken: string, user: AuthUser) => void;
+  clearTokens: () => void;
+}
 
-  login: async (email, password) => {
-    const accessToken = await authApi.login({ email, password });
-    localStorage.setItem('accessToken', accessToken);
-    set({ token: accessToken });
-  },
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      accessToken: null,
+      user: null,
 
-  register: async (email, password, displayName) => {
-    await authApi.register({ email, password, displayName });
-    // Auto-login after register
-    const accessToken = await authApi.login({ email, password });
-    localStorage.setItem('accessToken', accessToken);
-    set({ token: accessToken });
-  },
+      setTokens: (accessToken, user) => set({ accessToken, user }),
 
-  logout: () => {
-    localStorage.removeItem('accessToken');
-    set({ token: null });
-  },
-}));
+      clearTokens: () => set({ accessToken: null, user: null }),
+    }),
+    {
+      name: 'auth-storage',
+      storage: createJSONStorage(() => sessionStorage),
+      // Only persist the access token — user is reconstructed from the token on next load
+      partialize: (state) => ({ accessToken: state.accessToken }),
+    },
+  ),
+);

@@ -5,6 +5,12 @@ export interface CheckoutSessionResponse {
   sessionId: string;
 }
 
+export interface BillingPortalResponse {
+  portalUrl: string;
+}
+
+export type SubscriptionTier = SubscriptionTierResponse;
+
 export interface SubscriptionTierResponse {
   userId: string;
   tier: string;
@@ -31,6 +37,17 @@ export const billingApi = {
   async getSubscriptionTier(userId: string): Promise<SubscriptionTierResponse> {
     const response = await apiClient.get<{ success: boolean; data: SubscriptionTierResponse }>(
       `/v1/subscriptions/${userId}/tier`,
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Creates a Stripe Customer Portal session so the user can manage their subscription.
+   */
+  async getBillingPortal(userId: string): Promise<BillingPortalResponse> {
+    const response = await apiClient.post<{ success: boolean; data: BillingPortalResponse }>(
+      '/v1/billing/portal',
+      { userId },
     );
     return response.data.data;
   },
