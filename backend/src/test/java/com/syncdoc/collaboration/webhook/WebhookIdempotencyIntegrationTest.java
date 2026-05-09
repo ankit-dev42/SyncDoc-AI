@@ -2,6 +2,7 @@ package com.syncdoc.collaboration.webhook;
 
 import com.syncdoc.collaboration.config.BusinessValidationProperties;
 import com.syncdoc.collaboration.exception.GlobalExceptionHandler;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import com.syncdoc.collaboration.webhook.controller.WebhookController;
 import com.syncdoc.collaboration.webhook.repository.WebhookEventRepository;
 import com.syncdoc.collaboration.webhook.security.GitHubWebhookSignatureVerifier;
@@ -33,6 +34,7 @@ class WebhookIdempotencyIntegrationTest {
     @Mock private WebhookEventDispatcher webhookEventDispatcher;
     @Mock private WebhookAuditService webhookAuditService;
     @Mock private WebhookEventRepository webhookEventRepository;
+    @Mock private AuditLogger auditLogger;
 
     private MockMvc mockMvc;
     private final String secret = "test-secret";
@@ -42,9 +44,9 @@ class WebhookIdempotencyIntegrationTest {
         BusinessValidationProperties props = new BusinessValidationProperties();
         props.getGithub().setWebhookSecret(secret);
         WebhookController controller = new WebhookController(
-            signatureVerifier, webhookEventDispatcher, webhookAuditService, props, webhookEventRepository);
+            signatureVerifier, webhookEventDispatcher, webhookAuditService, props, webhookEventRepository, auditLogger);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-            .setControllerAdvice(new GlobalExceptionHandler())
+            .setControllerAdvice(new GlobalExceptionHandler(org.mockito.Mockito.mock(AuditLogger.class)))
             .build();
     }
 

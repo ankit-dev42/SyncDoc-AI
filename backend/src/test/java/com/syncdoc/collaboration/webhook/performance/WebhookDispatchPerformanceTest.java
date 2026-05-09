@@ -2,6 +2,7 @@ package com.syncdoc.collaboration.webhook.performance;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syncdoc.collaboration.config.BusinessValidationProperties;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import com.syncdoc.collaboration.webhook.controller.WebhookController;
 import com.syncdoc.collaboration.webhook.security.GitHubWebhookSignatureVerifier;
 import com.syncdoc.collaboration.webhook.service.GithubEventSchemaValidator;
@@ -38,7 +39,8 @@ class WebhookDispatchPerformanceTest {
         BusinessValidationProperties properties = new BusinessValidationProperties();
         properties.getGithub().setWebhookSecret(secret);
 
-        WebhookController controller = new WebhookController(signatureVerifier, dispatcher, auditService, properties, eventRepository);
+        AuditLogger auditLogger = mock(AuditLogger.class);
+        WebhookController controller = new WebhookController(signatureVerifier, dispatcher, auditService, properties, eventRepository, auditLogger);
         List<Long> latencies = new ArrayList<>();
         int samples = 100;
 

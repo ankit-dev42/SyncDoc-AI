@@ -4,6 +4,7 @@ import com.syncdoc.collaboration.ai.model.GeneratedDocumentation;
 import com.syncdoc.collaboration.ai.parser.GeneratedDocumentationParser;
 import com.syncdoc.collaboration.ai.repository.GeneratedDocumentationRepository;
 import com.syncdoc.collaboration.ai.service.AIProcessingService;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -28,6 +29,9 @@ class AIProcessingServiceTest {
 
     @Mock
     private AIProcessingService.AIExtractionClient aiExtractionClient;
+
+    @Mock
+    private AuditLogger auditLogger;
 
     @InjectMocks
     private AIProcessingService aiProcessingService;

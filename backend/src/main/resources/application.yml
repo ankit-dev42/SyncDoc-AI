@@ -32,10 +32,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,metrics,env,loggers
   endpoint:
     health:
-      show-details: never
+      show-details: when-authorized
 
 logging:
   level:

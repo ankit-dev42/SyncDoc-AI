@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ================================================================
+         Non-local profiles: structured JSON via logstash-logback-encoder
+         ================================================================ -->
+    <springProfile name="!local">
+        <appender name="JSON_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeCallerData>false</includeCallerData>
+                <includeMdcKeyName>event</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <includeMdcKeyName>ip</includeMdcKeyName>
+                <includeMdcKeyName>timestamp</includeMdcKeyName>
+                <includeMdcKeyName>traceId</includeMdcKeyName>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="JSON_STDOUT"/>
+        </root>
+
+        <logger name="com.syncdoc" level="DEBUG"/>
+        <logger name="AUDIT" level="INFO" additivity="false">
+            <appender-ref ref="JSON_STDOUT"/>
+        </logger>
+    </springProfile>
+
+    <!-- ================================================================
+         Local profile: human-readable coloured pattern
+         ================================================================ -->
+    <springProfile name="local">
+        <appender name="PATTERN_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%cyan(%d{HH:mm:ss.SSS}) %highlight(%-5level) %magenta([%thread]) %blue(%logger{36}) - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="PATTERN_STDOUT"/>
+        </root>
+
+        <logger name="com.syncdoc" level="DEBUG"/>
+        <logger name="AUDIT" level="INFO" additivity="false">
+            <appender-ref ref="PATTERN_STDOUT"/>
+        </logger>
+    </springProfile>
+
+</configuration>

@@ -51,7 +51,7 @@ class SubscriptionServiceRedisCacheTest {
     @BeforeEach
     void setUp() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        subscriptionService = new SubscriptionService(repository, stripeClient, redisTemplate);
+        subscriptionService = new SubscriptionService(repository, stripeClient, redisTemplate, new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
     }
 
     @Test

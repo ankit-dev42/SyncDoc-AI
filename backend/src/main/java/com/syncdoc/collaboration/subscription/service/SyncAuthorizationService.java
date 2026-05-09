@@ -27,6 +27,19 @@ public class SyncAuthorizationService {
         return new AuthorizationDecision(true, "Active subscription allows sync", null);
     }
 
+    public AuthorizationResult authorize(String userId, int currentSyncCount) {
+        UserSubscription subscription = subscriptionService.getSubscription(userId);
+
+        if (subscription.getTier() == SubscriptionTier.ENTERPRISE) {
+            subscriptionService.forceRefreshFromStripe(userId);
+            return AuthorizationResult.ALLOW;
+        }
+
+        AuthorizationDecision decision = evaluate(userId, currentSyncCount);
+        return decision.authorized() ? AuthorizationResult.ALLOW : AuthorizationResult.DENY;
+    }
+
     public record AuthorizationDecision(boolean authorized, String reason, String recommendedAction) {
     }
 }
+

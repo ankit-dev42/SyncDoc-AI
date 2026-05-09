@@ -64,6 +64,7 @@ public class WebSecurityConfig {
                     "/ws/**",
                     "/error"
                 ).permitAll()
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedEntryPoint()))

@@ -2,6 +2,7 @@ package com.syncdoc.collaboration.billing.handler;
 
 import com.stripe.model.Event;
 import com.syncdoc.collaboration.billing.security.StripeWebhookSignatureVerifier;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import com.syncdoc.collaboration.subscription.repository.ProcessedStripeEventRepository;
 import com.syncdoc.collaboration.subscription.service.SubscriptionService;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +35,9 @@ class StripeWebhookIdempotencyTest {
 
     @Mock
     private SubscriptionService subscriptionService;
+
+    @Mock
+    private AuditLogger auditLogger;
 
     @InjectMocks
     private StripeWebhookHandler stripeWebhookHandler;

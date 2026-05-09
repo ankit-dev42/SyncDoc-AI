@@ -45,7 +45,7 @@ class BillingControllerIntegrationTest {
     void setUp() {
         BillingController controller = new BillingController(stripeClient, subscriptionService, stripeWebhookHandler);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-            .setControllerAdvice(new GlobalExceptionHandler())
+            .setControllerAdvice(new GlobalExceptionHandler(org.mockito.Mockito.mock(com.syncdoc.collaboration.observability.AuditLogger.class)))
             .build();
     }
 

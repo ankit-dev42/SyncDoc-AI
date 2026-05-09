@@ -7,6 +7,8 @@ import com.syncdoc.collaboration.subscription.model.UserSubscription.Subscriptio
 import com.syncdoc.collaboration.subscription.repository.UserSubscriptionRepository;
 import com.syncdoc.collaboration.subscription.service.SubscriptionService;
 import com.syncdoc.collaboration.subscription.service.SyncAuthorizationService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +33,8 @@ class SyncAuthorizationServiceTest {
         org.springframework.data.redis.core.ValueOperations<String, Object> valueOps =
             mock(org.springframework.data.redis.core.ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
-        subscriptionService = new SubscriptionService(repository, stripeClient, redisTemplate);
+        MeterRegistry meterRegistry = new SimpleMeterRegistry();
+        subscriptionService = new SubscriptionService(repository, stripeClient, redisTemplate, meterRegistry);
         syncAuthorizationService = new SyncAuthorizationService(subscriptionService);
     }
 

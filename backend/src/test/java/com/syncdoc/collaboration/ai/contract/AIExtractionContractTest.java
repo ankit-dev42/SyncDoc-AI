@@ -91,7 +91,8 @@ class AIExtractionContractTest {
             new com.syncdoc.collaboration.ai.parser.GeneratedDocumentationParser.ParsedSections("slow", "wait")
         );
 
-        AIProcessingService service = new AIProcessingService(generatedDocumentationRepository, parser, slowClient);
+        AIProcessingService service = new AIProcessingService(generatedDocumentationRepository, parser, slowClient,
+            org.mockito.Mockito.mock(com.syncdoc.collaboration.observability.AuditLogger.class));
 
         long start = System.currentTimeMillis();
 

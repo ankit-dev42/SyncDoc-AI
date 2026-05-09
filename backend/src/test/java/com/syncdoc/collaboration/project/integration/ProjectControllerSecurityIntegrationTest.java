@@ -40,7 +40,7 @@ class ProjectControllerSecurityIntegrationTest {
     void setUp() {
         ProjectController controller = new ProjectController(projectAccessService, projectRepository);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-            .setControllerAdvice(new GlobalExceptionHandler())
+            .setControllerAdvice(new GlobalExceptionHandler(org.mockito.Mockito.mock(com.syncdoc.collaboration.observability.AuditLogger.class)))
             .build();
     }
 

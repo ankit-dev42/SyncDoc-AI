@@ -3,6 +3,7 @@ package com.syncdoc.collaboration.webhook.controller;
 import com.syncdoc.collaboration.common.dto.ApiResponse;
 import com.syncdoc.collaboration.config.BusinessValidationProperties;
 import com.syncdoc.collaboration.exception.BusinessValidationException;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import com.syncdoc.collaboration.webhook.repository.WebhookEventRepository;
 import com.syncdoc.collaboration.webhook.security.GitHubWebhookSignatureVerifier;
 import com.syncdoc.collaboration.webhook.service.WebhookAuditService;
@@ -26,19 +27,22 @@ public class WebhookController {
     private final WebhookAuditService webhookAuditService;
     private final BusinessValidationProperties businessValidationProperties;
     private final WebhookEventRepository webhookEventRepository;
+    private final AuditLogger auditLogger;
 
     public WebhookController(
         GitHubWebhookSignatureVerifier signatureVerifier,
         WebhookEventDispatcher webhookEventDispatcher,
         WebhookAuditService webhookAuditService,
         BusinessValidationProperties businessValidationProperties,
-        WebhookEventRepository webhookEventRepository
+        WebhookEventRepository webhookEventRepository,
+        AuditLogger auditLogger
     ) {
         this.signatureVerifier = signatureVerifier;
         this.webhookEventDispatcher = webhookEventDispatcher;
         this.webhookAuditService = webhookAuditService;
         this.businessValidationProperties = businessValidationProperties;
         this.webhookEventRepository = webhookEventRepository;
+        this.auditLogger = auditLogger;
     }
 
     @PostMapping("/github")
@@ -53,16 +57,19 @@ public class WebhookController {
 
         if (!signatureVerifier.isValid(signature, payload, webhookSecret)) {
             webhookAuditService.recordRejected(payloadHash, payload, "Invalid HMAC signature");
+            auditLogger.webhookRejected(payloadHash, "signature_invalid", "-");
             throw new BusinessValidationException(403, "INVALID_WEBHOOK_SIGNATURE", "Webhook signature verification failed");
         }
 
         // Idempotency guard — T151: return 202 immediately if hash already exists
         if (webhookEventRepository.existsByPayloadHash(payloadHash)) {
+            auditLogger.webhookDuplicate(payloadHash, "-");
             return ResponseEntity.accepted().body(ApiResponse.success("Webhook already processed", null));
         }
 
         webhookAuditService.recordAccepted(payloadHash, payload);
         webhookEventDispatcher.dispatch(deliveryId, eventType, payloadHash, payload);
+        auditLogger.webhookAccepted(payloadHash, eventType, "-");
 
         return ResponseEntity.accepted().body(ApiResponse.success("Webhook accepted", null));
     }
@@ -81,3 +88,4 @@ public class WebhookController {
         }
     }
 }
+

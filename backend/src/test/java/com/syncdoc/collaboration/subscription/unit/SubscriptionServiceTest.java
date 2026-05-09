@@ -38,7 +38,7 @@ class SubscriptionServiceTest {
     @BeforeEach
     void setUp() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        service = new SubscriptionService(repository, stripeClient, redisTemplate);
+        service = new SubscriptionService(repository, stripeClient, redisTemplate, new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
     }
 
     @Test

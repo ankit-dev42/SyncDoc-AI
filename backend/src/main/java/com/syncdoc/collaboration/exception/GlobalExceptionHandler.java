@@ -4,10 +4,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -26,6 +28,12 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final AuditLogger auditLogger;
+
+    public GlobalExceptionHandler(AuditLogger auditLogger) {
+        this.auditLogger = auditLogger;
+    }
 
     // -----------------------------------------------------------------------
     // 400 — Validation
@@ -82,6 +90,12 @@ public class GlobalExceptionHandler {
         AccessDeniedException ex, HttpServletRequest request
     ) {
         logger.warn("Access denied to {} from {}", request.getRequestURI(), request.getRemoteAddr());
+        String userId = "-";
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getName() != null) {
+            userId = authentication.getName();
+        }
+        auditLogger.accessDenied(userId, request.getRequestURI(), request.getRemoteAddr());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(
             "ACCESS_DENIED", "You do not have permission to access this resource",
             List.of(), Instant.now(), request.getRequestURI()

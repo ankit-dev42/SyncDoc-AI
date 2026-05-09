@@ -2,6 +2,7 @@ package com.syncdoc.collaboration.webhook.integration;
 
 import com.syncdoc.collaboration.config.BusinessValidationProperties;
 import com.syncdoc.collaboration.exception.GlobalExceptionHandler;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import com.syncdoc.collaboration.webhook.controller.WebhookController;
 import com.syncdoc.collaboration.webhook.security.GitHubWebhookSignatureVerifier;
 import com.syncdoc.collaboration.webhook.repository.WebhookEventRepository;
@@ -39,6 +40,9 @@ class WebhookControllerIntegrationTest {
     @Mock
     private WebhookEventRepository webhookEventRepository;
 
+    @Mock
+    private AuditLogger auditLogger;
+
     private BusinessValidationProperties businessValidationProperties;
 
     private MockMvc mockMvc;
@@ -53,10 +57,11 @@ class WebhookControllerIntegrationTest {
             webhookEventDispatcher,
             webhookAuditService,
             businessValidationProperties,
-            webhookEventRepository
+            webhookEventRepository,
+            auditLogger
         );
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-            .setControllerAdvice(new GlobalExceptionHandler())
+            .setControllerAdvice(new GlobalExceptionHandler(org.mockito.Mockito.mock(AuditLogger.class)))
             .build();
     }
 
