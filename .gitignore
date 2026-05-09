@@ -25,6 +25,7 @@ build/
 
 # Playwright
 frontend/test-results/
+frontend/test-results/.last-run.json
 frontend/tests/test-results/screenshots/*
 frontend/tests/integration/fixtures/.test-users.json
 

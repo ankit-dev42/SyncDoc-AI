@@ -7,7 +7,6 @@ import com.syncdoc.collaboration.subscription.model.UserSubscription;
 import com.syncdoc.collaboration.subscription.model.UserSubscription.SubscriptionStatus;
 import com.syncdoc.collaboration.subscription.model.UserSubscription.SubscriptionTier;
 import com.syncdoc.collaboration.subscription.repository.UserSubscriptionRepository;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -30,9 +29,6 @@ public class SubscriptionService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final MeterRegistry meterRegistry;
 
-    private Counter subscriptionCheckCounter;
-    private Timer subscriptionCheckTimer;
-
     public SubscriptionService(
         UserSubscriptionRepository repository,
         StripeClient stripeClient,
@@ -43,23 +39,20 @@ public class SubscriptionService {
         this.stripeClient = stripeClient;
         this.redisTemplate = redisTemplate;
         this.meterRegistry = meterRegistry;
-        // initialize metrics eagerly so they work even when instantiated outside Spring context
-        this.subscriptionCheckCounter = Counter.builder("subscription.check.total")
-            .description("Total subscription checks")
-            .register(meterRegistry);
-        this.subscriptionCheckTimer = Timer.builder("subscription.check.duration")
-            .description("Subscription check latency")
-            .register(meterRegistry);
     }
 
     public UserSubscription getSubscription(String userId) {
         Timer.Sample sample = Timer.start(meterRegistry);
+        String tier = "unknown";
+        String result = "error";
         try {
             String cacheKey = CACHE_KEY_PREFIX + userId;
 
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached instanceof UserSubscription cachedSub) {
                 if (cachedSub.getTier() != SubscriptionTier.ENTERPRISE) {
+                    tier = cachedSub.getTier().name().toLowerCase();
+                    result = "success";
                     return cachedSub;
                 }
             }
@@ -74,10 +67,19 @@ public class SubscriptionService {
                 redisTemplate.opsForValue().set(cacheKey, resolved, CACHE_TTL.toMillis(), TimeUnit.MILLISECONDS);
             }
 
+            tier = resolved.getTier().name().toLowerCase();
+            result = "success";
             return resolved;
         } finally {
-            sample.stop(subscriptionCheckTimer);
-            subscriptionCheckCounter.increment();
+            String finalTier = tier;
+            String finalResult = result;
+            sample.stop(Timer.builder("subscription.check.duration")
+                .description("Subscription check latency")
+                .tag("tier", finalTier)
+                .tag("result", finalResult)
+                .register(meterRegistry));
+            meterRegistry.counter("subscription.check.total",
+                "tier", finalTier, "result", finalResult).increment();
         }
     }
 

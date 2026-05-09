@@ -82,7 +82,21 @@ public class AuthController {
         if (refreshToken != null && !refreshToken.isBlank()) {
             authService.logout(refreshToken, httpResponse);
         }
-        auditLogger.authLogout("-", httpRequest.getRemoteAddr());
+        auditLogger.authLogout(resolveAuditUserId(httpRequest), httpRequest.getRemoteAddr());
         return ResponseEntity.ok(ApiResponse.success("Logged out successfully", null));
+    }
+
+    /**
+     * Returns the authenticated user's identifier from the request principal,
+     * or "-" when the endpoint is called without a valid JWT (e.g. logout without token).
+     */
+    private String resolveAuditUserId(HttpServletRequest httpRequest) {
+        if (httpRequest.getUserPrincipal() != null) {
+            String userId = httpRequest.getUserPrincipal().getName();
+            if (userId != null && !userId.isBlank()) {
+                return userId;
+            }
+        }
+        return "-";
     }
 }
