@@ -6,6 +6,7 @@ import com.syncdoc.collaboration.auth.dto.TokenResponse;
 import com.syncdoc.collaboration.auth.dto.UserResponse;
 import com.syncdoc.collaboration.auth.service.AuthService;
 import com.syncdoc.collaboration.common.dto.ApiResponse;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -25,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuditLogger auditLogger;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, AuditLogger auditLogger) {
         this.authService = authService;
+        this.auditLogger = auditLogger;
     }
 
     @PostMapping("/register")
@@ -46,6 +49,7 @@ public class AuthController {
         HttpServletResponse httpResponse
     ) {
         TokenResponse token = authService.login(request, httpRequest, httpResponse);
+        auditLogger.authLogin("-", httpRequest.getRemoteAddr());
         return ResponseEntity.ok(ApiResponse.success("Login successful", token));
     }
 
@@ -56,21 +60,43 @@ public class AuthController {
         HttpServletResponse httpResponse
     ) {
         if (refreshToken == null || refreshToken.isBlank()) {
+            auditLogger.authRefreshFailed("-", httpRequest.getRemoteAddr(), "missing_refresh_cookie");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("Refresh token cookie is missing"));
         }
-        TokenResponse token = authService.refresh(refreshToken, httpRequest, httpResponse);
-        return ResponseEntity.ok(ApiResponse.success("Token refreshed", token));
+        try {
+            TokenResponse token = authService.refresh(refreshToken, httpRequest, httpResponse);
+            return ResponseEntity.ok(ApiResponse.success("Token refreshed", token));
+        } catch (Exception ex) {
+            auditLogger.authRefreshFailed("-", httpRequest.getRemoteAddr(), ex.getClass().getSimpleName());
+            throw ex;
+        }
     }
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
         @CookieValue(name = AuthService.REFRESH_COOKIE_NAME, required = false) String refreshToken,
+        HttpServletRequest httpRequest,
         HttpServletResponse httpResponse
     ) {
         if (refreshToken != null && !refreshToken.isBlank()) {
             authService.logout(refreshToken, httpResponse);
         }
+        auditLogger.authLogout(resolveAuditUserId(httpRequest), httpRequest.getRemoteAddr());
         return ResponseEntity.ok(ApiResponse.success("Logged out successfully", null));
+    }
+
+    /**
+     * Returns the authenticated user's identifier from the request principal,
+     * or "-" when the endpoint is called without a valid JWT (e.g. logout without token).
+     */
+    private String resolveAuditUserId(HttpServletRequest httpRequest) {
+        if (httpRequest.getUserPrincipal() != null) {
+            String userId = httpRequest.getUserPrincipal().getName();
+            if (userId != null && !userId.isBlank()) {
+                return userId;
+            }
+        }
+        return "-";
     }
 }

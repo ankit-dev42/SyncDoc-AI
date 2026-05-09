@@ -72,6 +72,11 @@ class SecretExposureAuditTest {
         if (line.contains("Bearer ${") || line.contains("Authorization")) {
             return false;
         }
+        // Deny-list / forbidden-key declarations define key NAMES to block, not actual secret values
+        if (line.contains("FORBIDDEN") || line.contains("BLOCKED") || line.contains("DENY_LIST")
+                || line.contains("denyList") || line.contains("deniedKeys")) {
+            return false;
+        }
         if (isFrontend) {
             // HTML/JSX input attributes: type="password", type='text', etc. are not secret values
             if (line.matches(".*\\btype\\s*=\\s*[\"']\\w+[\"'].*")) {

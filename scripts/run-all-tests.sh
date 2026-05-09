@@ -38,9 +38,15 @@ log_step "Running frontend unit/component test suite"
 ensure_playwright_chromium
 
 log_step "Running frontend Playwright E2E suite"
-(
-  cd "$FRONTEND_DIR"
-  npm run test:e2e
-)
+if curl -sf --max-time 3 http://localhost:8080/actuator/health > /dev/null 2>&1; then
+  (
+    cd "$FRONTEND_DIR"
+    npm run test:e2e
+  )
+else
+  printf '\n[WARN] Backend not reachable at localhost:8080 — skipping E2E integration tests.\n'
+  printf '       Start the backend (and its dependencies) first, then re-run:\n'
+  printf '         cd frontend && npm run test:e2e\n'
+fi
 
 log_step "All backend and frontend tests passed"

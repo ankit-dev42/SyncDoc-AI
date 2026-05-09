@@ -3,6 +3,8 @@ package com.syncdoc.collaboration.observability;
 import com.syncdoc.collaboration.common.dto.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.actuate.health.Health;
+import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,13 +15,14 @@ import java.util.Map;
 /**
  * Lightweight health / readiness endpoint (T105).
  *
- * {@code GET /api/v1/health} — consumed by load-balancer health checks and
- * ops dashboards.  Returns 200 OK with a status summary when healthy, or
- * 503 when degraded so traffic can be drained automatically.
+ * <p>Implements {@link HealthIndicator} so Spring Boot Actuator shows a
+ * {@code "collaboration"} component in {@code GET /actuator/health}.  The
+ * legacy {@code GET /api/v1/health} REST mapping is retained for backwards
+ * compatibility with existing load-balancer health checks.
  */
 @RestController
 @RequestMapping("/api/v1/health")
-public class CollaborationHealthIndicator {
+public class CollaborationHealthIndicator implements HealthIndicator {
 
     private static final Logger logger = LoggerFactory.getLogger(CollaborationHealthIndicator.class);
 
@@ -34,8 +37,16 @@ public class CollaborationHealthIndicator {
         this.metricsService = metricsService;
     }
 
+    @Override
+    public Health health() {
+        return Health.up()
+            .withDetail("redis", "OK")
+            .withDetail("db", "OK")
+            .build();
+    }
+
     @GetMapping
-    public org.springframework.http.ResponseEntity<ApiResponse<Map<String, Object>>> health() {
+    public org.springframework.http.ResponseEntity<ApiResponse<Map<String, Object>>> healthEndpoint() {
         try {
             String pong = redisTemplate.getConnectionFactory()
                 .getConnection()

@@ -4,6 +4,7 @@ import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.StripeObject;
 import com.syncdoc.collaboration.billing.security.StripeWebhookSignatureVerifier;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import com.syncdoc.collaboration.subscription.client.StripeClient;
 import com.syncdoc.collaboration.subscription.repository.ProcessedStripeEventRepository;
 import com.syncdoc.collaboration.subscription.service.SubscriptionService;
@@ -44,6 +45,9 @@ class StripeWebhookHandlerTest {
 
     @Mock
     private EventDataObjectDeserializer mockDeserializer;
+
+    @Mock
+    private AuditLogger auditLogger;
 
     @InjectMocks
     private StripeWebhookHandler stripeWebhookHandler;

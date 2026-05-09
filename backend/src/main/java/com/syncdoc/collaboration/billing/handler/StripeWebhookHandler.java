@@ -5,6 +5,7 @@ import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.StripeObject;
 import com.syncdoc.collaboration.billing.security.StripeWebhookSignatureVerifier;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import com.syncdoc.collaboration.subscription.model.ProcessedStripeEvent;
 import com.syncdoc.collaboration.subscription.repository.ProcessedStripeEventRepository;
 import com.syncdoc.collaboration.subscription.service.SubscriptionService;
@@ -30,15 +31,18 @@ public class StripeWebhookHandler {
     private final StripeWebhookSignatureVerifier signatureVerifier;
     private final ProcessedStripeEventRepository processedStripeEventRepository;
     private final SubscriptionService subscriptionService;
+    private final AuditLogger auditLogger;
 
     public StripeWebhookHandler(
         StripeWebhookSignatureVerifier signatureVerifier,
         ProcessedStripeEventRepository processedStripeEventRepository,
-        SubscriptionService subscriptionService
+        SubscriptionService subscriptionService,
+        AuditLogger auditLogger
     ) {
         this.signatureVerifier = signatureVerifier;
         this.processedStripeEventRepository = processedStripeEventRepository;
         this.subscriptionService = subscriptionService;
+        this.auditLogger = auditLogger;
     }
 
     public void handle(String payload, String sigHeader) throws SignatureVerificationException {
@@ -46,6 +50,10 @@ public class StripeWebhookHandler {
         Event event = signatureVerifier.constructEvent(payload, sigHeader);
 
         String eventId = event.getId();
+        String eventType = event.getType();
+
+        // Audit: webhook received after signature verified
+        auditLogger.billingWebhookReceived(eventId, eventType, "-");
 
         // Idempotency: skip already-processed events
         if (processedStripeEventRepository.existsByStripeEventId(eventId)) {
@@ -53,11 +61,15 @@ public class StripeWebhookHandler {
             return;
         }
 
-        String eventType = event.getType();
         if (HANDLED_EVENTS.contains(eventType)) {
             EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
             Optional<StripeObject> stripeObject = deserializer.getObject();
-            stripeObject.ifPresent(obj -> subscriptionService.invalidateCache(extractUserId(event)));
+            if (stripeObject.isPresent()) {
+                String userId = extractUserId(event);
+                subscriptionService.invalidateCache(userId);
+                String maskedCustomerId = maskCustomerId(extractCustomerId(event));
+                auditLogger.billingSubscriptionChanged(maskedCustomerId, eventType, "-");
+            }
         }
 
         // Mark event as processed
@@ -76,4 +88,23 @@ public class StripeWebhookHandler {
             .orElse(null);
         return metadata;
     }
+
+    private String extractCustomerId(Event event) {
+        return event.getDataObjectDeserializer().getObject()
+            .map(obj -> {
+                if (obj instanceof com.stripe.model.Subscription sub) {
+                    return sub.getCustomer();
+                }
+                return "-";
+            })
+            .orElse("-");
+    }
+
+    private String maskCustomerId(String customerId) {
+        if (customerId == null || customerId.length() <= 4) {
+            return "****";
+        }
+        return "****" + customerId.substring(customerId.length() - 4);
+    }
 }
+

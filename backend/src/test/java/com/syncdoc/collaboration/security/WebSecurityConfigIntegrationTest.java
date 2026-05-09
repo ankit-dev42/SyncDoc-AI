@@ -8,6 +8,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -129,6 +131,52 @@ class WebSecurityConfigIntegrationTest {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Generates a JWT with ROLE_ADMIN claim for Phase 4 Actuator security tests (T310a).
+     * Uses the same secret as JwtTestTokenHelper so JwtAuthenticationFilter accepts it.
+     */
+    private String buildAdminToken() {
+        javax.crypto.SecretKey key = io.jsonwebtoken.security.Keys
+            .hmacShaKeyFor(JwtTestTokenHelper.TEST_SECRET.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        long now = System.currentTimeMillis();
+        return io.jsonwebtoken.Jwts.builder()
+            .subject("admin-user-" + UUID.randomUUID())
+            .claim("roles", List.of("ROLE_ADMIN"))
+            .issuedAt(new Date(now))
+            .expiration(new Date(now + 15 * 60 * 1000L))
+            .signWith(key)
+            .compact();
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 4 (T310a): Actuator endpoint security assertions (SC-P4-1, SC-P4-2)
+    // These must FAIL before T311 adds hasRole("ADMIN") for /actuator/**
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("T310a-1: GET /actuator/env without role → 401")
+    void actuatorEnv_noRole_401() throws Exception {
+        mockMvc.perform(get("/actuator/env"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("T310a-2: GET /actuator/metrics without role → 401")
+    void actuatorMetrics_noRole_401() throws Exception {
+        mockMvc.perform(get("/actuator/metrics"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("T310a-3: GET /actuator/health with ADMIN token → components include db and redis")
+    void actuatorHealth_adminToken_includesDbAndRedisComponents() throws Exception {
+        String adminToken = buildAdminToken();
+        mockMvc.perform(get("/actuator/health")
+                .header("Authorization", "Bearer " + adminToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.components.db").exists());
+    }
 
     private String buildExpiredToken() {
         javax.crypto.SecretKey key = io.jsonwebtoken.security.Keys

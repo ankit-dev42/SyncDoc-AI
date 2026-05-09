@@ -44,9 +44,11 @@ jobs:
       - name: Run tests and check coverage
         working-directory: backend
         env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/syncdoc_test
-          SPRING_DATASOURCE_USERNAME: syncdoc
-          SPRING_DATASOURCE_PASSWORD: syncdoc_password
+          # Unit tests use H2 in-memory (application-test.yml) — do NOT set
+          # SPRING_DATASOURCE_* here, as env vars override YAML and would cause
+          # H2 driver to attempt a PostgreSQL URL connection (fails).
+          # IT tests use Testcontainers (@DynamicPropertySource has higher
+          # priority than env vars, so they connect to their own container).
           SPRING_REDIS_HOST: localhost
           SPRING_REDIS_PORT: 6379
           JWT_SECRET: test-jwt-secret-key-at-least-32-chars-ok

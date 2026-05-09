@@ -5,6 +5,7 @@ import com.syncdoc.collaboration.ai.parser.GeneratedDocumentationParser;
 import com.syncdoc.collaboration.ai.repository.GeneratedDocumentationRepository;
 import com.syncdoc.collaboration.config.BusinessValidationProperties;
 import com.syncdoc.collaboration.exception.BusinessValidationException;
+import com.syncdoc.collaboration.observability.AuditLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -21,19 +22,23 @@ public class AIProcessingService {
     private final GeneratedDocumentationRepository generatedDocumentationRepository;
     private final GeneratedDocumentationParser generatedDocumentationParser;
     private final AIExtractionClient aiExtractionClient;
+    private final AuditLogger auditLogger;
 
     public AIProcessingService(
         GeneratedDocumentationRepository generatedDocumentationRepository,
         GeneratedDocumentationParser generatedDocumentationParser,
-        AIExtractionClient aiExtractionClient
+        AIExtractionClient aiExtractionClient,
+        AuditLogger auditLogger
     ) {
         this.generatedDocumentationRepository = generatedDocumentationRepository;
         this.generatedDocumentationParser = generatedDocumentationParser;
         this.aiExtractionClient = aiExtractionClient;
+        this.auditLogger = auditLogger;
     }
 
     @Async("aiExtractionExecutor")
     public GeneratedDocumentation processExtraction(String userId, String sourceContentId, String sourceContent) {
+        long startTime = System.currentTimeMillis();
         GeneratedDocumentation documentation = new GeneratedDocumentation();
         documentation.setUserId(userId);
         documentation.setSourceContentId(sourceContentId);
@@ -50,14 +55,20 @@ public class AIProcessingService {
             documentation.setStatus(GeneratedDocumentation.ProcessingStatus.COMPLETED);
             documentation.setQualityScore(calculateQualityScore(sections, sourceContent));
             documentation.setCompletedAt(Instant.now());
+            GeneratedDocumentation saved = generatedDocumentationRepository.save(documentation);
+            long durationMs = System.currentTimeMillis() - startTime;
+            double score = saved.getQualityScore() != null ? saved.getQualityScore() : 0.0;
+            auditLogger.aiExtractionCompleted(saved.getId(), score, durationMs, userId, "-");
+            return saved;
         } catch (Exception ex) {
             log.error("AI extraction failed for sourceContentId={}: {}", sourceContentId, ex.getMessage(), ex);
             documentation.setStatus(GeneratedDocumentation.ProcessingStatus.FAILED);
             documentation.setProcessingError(ex.getMessage());
             documentation.setCompletedAt(Instant.now());
+            GeneratedDocumentation saved = generatedDocumentationRepository.save(documentation);
+            auditLogger.aiExtractionFailed(saved.getId(), ex.getClass().getSimpleName(), userId, "-");
+            return saved;
         }
-
-        return generatedDocumentationRepository.save(documentation);
     }
 
     public GeneratedDocumentation getDocumentation(String docId) {
@@ -97,6 +108,7 @@ public class AIProcessingService {
         String extractDocumentation(String sourceContent);
     }
 }
+
 
 @Component
 class DefaultAIExtractionClient implements AIProcessingService.AIExtractionClient {
